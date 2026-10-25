@@ -92,3 +92,22 @@ for that logger under **Manage Jenkins → System Log** to keep a trail.
 
 The conversation is kept in your browser session on the controller, at most the last 12 turns, and
 only the questions and answers: never the data the tools looked up. **New conversation** clears it.
+
+## Starting builds from the assistant
+
+Off by default. Under **Manage Jenkins → System → Concierge assistant**, tick **Let the assistant
+propose builds** and list the jobs it may propose in **Jobs it may propose**, one pattern per line:
+`team/api-build`, `team/*` (one folder level) or `team/**` (any depth). Empty means none.
+
+When someone asks for a build ("run this again", "build api with BRANCH=release"), the assistant
+proposes it and a card appears in the chat with the job and every parameter value. **Nothing runs
+until the person clicks Run it.** Clicking **Cancel** drops the proposal.
+
+On **Run it**, everything is checked again: the person still has the Build permission on the job,
+the job is still listed, it can be built, the parameter values are valid, and the proposal is
+theirs, from this session, less than ten minutes old and not used before. The build is started as
+that person ("Started by user ...").
+
+- Password parameters can never be set by the assistant; the job's default is used.
+- **Run it again** copies the earlier build's ordinary parameter values, never sensitive ones.
+- The audit logger records each proposal, confirmation, refusal and cancellation.

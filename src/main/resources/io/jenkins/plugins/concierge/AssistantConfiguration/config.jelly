@@ -40,6 +40,12 @@
     <f:entry title="${%Most tool calls per question}" field="maxToolCalls">
       <f:number clazz="positive-number" min="1" max="20" default="8"/>
     </f:entry>
+    <f:entry title="${%Builds}" field="allowActions">
+      <f:checkbox title="${%Let the assistant propose builds, which the person confirms}"/>
+    </f:entry>
+    <f:entry title="${%Jobs it may propose}" field="actionJobs">
+      <f:textarea/>
+    </f:entry>
     <f:entry field="allowUserKeys">
       <f:checkbox title="${%Let users bring their own API key for this provider}"/>
     </f:entry>

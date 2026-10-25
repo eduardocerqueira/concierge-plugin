@@ -53,9 +53,28 @@ final class AssistantTools {
     private final AssistantConfiguration config;
     private final Redactor redactor;
 
+    @CheckForNull
+    private final BuildProposals proposals;
+
     AssistantTools(@NonNull AssistantConfiguration config, @NonNull Redactor redactor) {
+        this(config, redactor, null);
+    }
+
+    /**
+     * @param proposals where proposed builds go, or null to offer no actions. Even with a store,
+     *     the proposal tools are only offered when an administrator has allowed actions.
+     */
+    AssistantTools(
+            @NonNull AssistantConfiguration config,
+            @NonNull Redactor redactor,
+            @CheckForNull BuildProposals proposals) {
         this.config = config;
         this.redactor = redactor;
+        this.proposals = proposals;
+    }
+
+    boolean actionsOffered() {
+        return proposals != null && config.isAllowActions();
     }
 
     /** The tool definitions sent to the model. */
@@ -124,6 +143,29 @@ final class AssistantTools {
                     Map.of("job", prop("string", "The job's full name.")),
                     "job"));
         }
+        if (actionsOffered()) {
+            specs.add(spec(
+                    "propose_build",
+                    "Propose starting a build. Nothing runs: the person sees a confirmation card and decides."
+                            + " Only for jobs the administrator allows and the person may build. Omitted"
+                            + " parameters use the job's defaults; password parameters cannot be set.",
+                    Map.of(
+                            "job", prop("string", "The job's full name."),
+                            "parameters",
+                                    Map.of(
+                                            "type", "object",
+                                            "description", "Parameter values by name, as strings.",
+                                            "additionalProperties", Map.of("type", "string"))),
+                    "job"));
+            specs.add(spec(
+                    "propose_rebuild",
+                    "Propose running a build again with the same parameters (sensitive values revert to"
+                            + " defaults). Nothing runs until the person confirms.",
+                    Map.of(
+                            "job", prop("string", "The job's full name."),
+                            "number", prop("integer", "The build to repeat. Omit for the last build.")),
+                    "job"));
+        }
         specs.add(spec("get_queue", "Builds waiting to start, and why they are waiting.", Map.of()));
         specs.add(spec("list_agents", "Agents, whether they are online, their executors and labels.", Map.of()));
         specs.add(spec(
@@ -156,6 +198,8 @@ final class AssistantTools {
                 case "get_queue" -> queue();
                 case "list_agents" -> agents();
                 case "list_plugins" -> plugins();
+                case "propose_build" -> propose(args, false);
+                case "propose_rebuild" -> propose(args, true);
                 default -> throw new ToolException("There is no tool called " + call.name() + ".");
             };
         } catch (ToolException e) {
@@ -468,6 +512,39 @@ final class AssistantTools {
             plugins.add(entry);
         }
         return Map.of("plugins", plugins);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> propose(Map<String, Object> args, boolean rebuild) throws ToolException {
+        BuildProposals store = proposals;
+        if (store == null || !config.isAllowActions()) {
+            throw new ToolException("An administrator has not allowed the assistant to propose builds.");
+        }
+        String job = string(args, "job");
+        if (job.isEmpty()) {
+            throw new ToolException("Say which job, by its full name.");
+        }
+        BuildProposals.Proposal proposal;
+        try {
+            if (rebuild) {
+                proposal = store.proposeRebuild(config, job, integer(args, "number", -1));
+            } else {
+                Object parameters = args.get("parameters");
+                proposal = store.proposeBuild(
+                        config, job, parameters instanceof Map ? (Map<String, Object>) parameters : Map.of());
+            }
+        } catch (BuildProposals.ProposalException e) {
+            throw new ToolException(e.getMessage());
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("proposed", true);
+        out.put("job", proposal.job());
+        out.put("parameters", proposal.parameters());
+        out.put(
+                "note",
+                "Nothing has run. The person now sees a confirmation card and decides. Tell them to check"
+                        + " the card; do not say the build started.");
+        return out;
     }
 
     // ------------------------------------------------------------------ helpers

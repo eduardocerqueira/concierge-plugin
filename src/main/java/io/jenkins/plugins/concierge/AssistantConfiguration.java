@@ -51,6 +51,8 @@ public class AssistantConfiguration extends GlobalConfiguration {
     private int requestsPerHour = DEFAULT_REQUESTS_PER_HOUR;
     private int maxToolCalls = DEFAULT_MAX_TOOL_CALLS;
     private boolean allowUserKeys;
+    private boolean allowActions;
+    private String actionJobs;
 
     public AssistantConfiguration() {
         load();
@@ -70,6 +72,7 @@ public class AssistantConfiguration extends GlobalConfiguration {
         shareConfiguration = false;
         shareScm = false;
         allowUserKeys = false;
+        allowActions = false;
         req.bindJSON(this, json);
         FormValidation problem = validate();
         if (enabled && problem.kind == FormValidation.Kind.ERROR) {
@@ -266,6 +269,31 @@ public class AssistantConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setAllowUserKeys(boolean allowUserKeys) {
         this.allowUserKeys = allowUserKeys;
+    }
+
+    public boolean isAllowActions() {
+        return allowActions;
+    }
+
+    @DataBoundSetter
+    public void setAllowActions(boolean allowActions) {
+        this.allowActions = allowActions;
+    }
+
+    /** Job full-name patterns, one per line, that the assistant may propose running. */
+    @NonNull
+    public String getActionJobs() {
+        return actionJobs == null ? "" : actionJobs;
+    }
+
+    @DataBoundSetter
+    public void setActionJobs(String actionJobs) {
+        this.actionJobs = actionJobs == null ? null : actionJobs.trim();
+    }
+
+    @NonNull
+    JobPatterns getActionJobPatterns() {
+        return new JobPatterns(actionJobs);
     }
 
     /** The configured API key, looked up as SYSTEM because only administrators configure it. */

@@ -1,0 +1,6 @@
+# Installed into the demo image before Concierge. Concierge itself needs the two credentials
+# plugins; folders and matrix-auth are what make "everyone sees only what they may" visible.
+credentials
+plain-credentials
+cloudbees-folder
+matrix-auth
