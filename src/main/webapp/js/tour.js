@@ -15,6 +15,8 @@
   var target = null;
   var currentSelector = null;
   var watcher = null;
+  // Where focus was before the card took it, so it can go back there when the tour ends.
+  var returnFocus = null;
 
   function load() {
     try {
@@ -90,8 +92,12 @@
       target = null;
     }
     if (card) {
+      var hadFocus = card.contains(document.activeElement);
       card.remove();
       card = null;
+      if (hadFocus && returnFocus && returnFocus.isConnected) {
+        returnFocus.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -168,15 +174,19 @@
       target.scrollIntoView({ block: "center", behavior: "auto" });
     }
 
+    if (!returnFocus || !returnFocus.isConnected) {
+      returnFocus = document.activeElement;
+    }
     card = el("div", "concierge-tour-card");
     card.setAttribute("role", "dialog");
-    card.setAttribute("aria-live", "polite");
     card.setAttribute("aria-label", step.title);
+    card.setAttribute("aria-describedby", "concierge-tour-text");
 
     var counter = el("p", "concierge-tour-card__counter",
       "Step " + (state.index + 1) + " of " + state.steps.length);
     var title = el("h2", "concierge-tour-card__title", step.title);
     var text = el("p", "concierge-tour-card__text", step.text);
+    text.id = "concierge-tour-text";
 
     var actions = el("div", "concierge-tour-card__actions");
     var exit = el("button", "jenkins-button jenkins-button--tertiary", "Leave tour");
@@ -243,7 +253,7 @@
       }
     });
     document.addEventListener("keydown", function (event) {
-      if (card && event.key === "Escape") {
+      if (card && event.key === "Escape" && !event.isComposing) {
         end();
       }
     });

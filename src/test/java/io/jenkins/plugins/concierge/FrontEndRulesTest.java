@@ -14,8 +14,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * docs/security-design.md, rule 6, checked against the source: no {@code innerHTML} in our scripts,
- * no inline script in our views, and every view escapes by default.
+ * docs/security-design.md, rule 6, checked against the source: nothing in our scripts parses HTML or
+ * evaluates code, no inline script, handler or style in our views, and every view escapes by default.
  */
 class FrontEndRulesTest {
 
@@ -26,7 +26,16 @@ class FrontEndRulesTest {
     void scriptsNeverParseHtml() throws IOException {
         for (Path js : files(WEBAPP, ".js")) {
             String source = Files.readString(js, StandardCharsets.UTF_8);
-            for (String banned : List.of("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(")) {
+            for (String banned : List.of(
+                    "innerHTML",
+                    "outerHTML",
+                    "insertAdjacentHTML",
+                    "document.write",
+                    "eval(",
+                    "new Function",
+                    "DOMParser",
+                    "createContextualFragment",
+                    "javascript:")) {
                 assertFalse(source.contains(banned), js + " uses " + banned);
             }
         }
@@ -35,7 +44,9 @@ class FrontEndRulesTest {
     @Test
     void viewsHaveNoInlineScriptAndEscapeByDefault() throws IOException {
         Pattern inlineScript = Pattern.compile("<script(?![^>]*\\bsrc=)[^>]*>", Pattern.CASE_INSENSITIVE);
-        Pattern handler = Pattern.compile("\\son[a-z]+=\"", Pattern.CASE_INSENSITIVE);
+        Pattern handler = Pattern.compile("\\son[a-z]+\\s*=\\s*[\"']", Pattern.CASE_INSENSITIVE);
+        // Inline styles are blocked by a strict Content-Security-Policy too.
+        Pattern style = Pattern.compile("\\sstyle\\s*=\\s*[\"']", Pattern.CASE_INSENSITIVE);
         List<Path> views = files(VIEWS, ".jelly");
         assertFalse(views.isEmpty());
         for (Path view : views) {
@@ -43,6 +54,9 @@ class FrontEndRulesTest {
             assertTrue(source.startsWith("<?jelly escape-by-default='true'?>"), view + " must escape by default");
             assertFalse(inlineScript.matcher(source).find(), view + " has an inline script");
             assertFalse(handler.matcher(source).find(), view + " has an inline event handler");
+            assertFalse(style.matcher(source).find(), view + " has an inline style");
+            assertFalse(source.contains("escape-by-default='false'"), view + " turns escaping off");
+            assertFalse(source.contains("rawHtml"), view + " writes raw HTML");
         }
     }
 
