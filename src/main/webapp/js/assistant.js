@@ -361,10 +361,71 @@
     }
   }
 
+  var SVG = "http://www.w3.org/2000/svg";
+
+  /** A concierge's service bell, drawn with DOM calls like everything else here. */
+  function bellIcon() {
+    var svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var button = document.createElementNS(SVG, "circle");
+    button.setAttribute("cx", "12");
+    button.setAttribute("cy", "5.2");
+    button.setAttribute("r", "1.6");
+    var dome = document.createElementNS(SVG, "path");
+    dome.setAttribute("d", "M12 7.6c-4.1 0-7.4 3.1-7.7 7.1h15.4c-.3-4-3.6-7.1-7.7-7.1z");
+    var base = document.createElementNS(SVG, "rect");
+    base.setAttribute("x", "2.5");
+    base.setAttribute("y", "15.8");
+    base.setAttribute("width", "19");
+    base.setAttribute("height", "2.6");
+    base.setAttribute("rx", "1.3");
+    svg.appendChild(button);
+    svg.appendChild(dome);
+    svg.appendChild(base);
+    return svg;
+  }
+
+  /**
+   * Keeps the launcher above Jenkins' page footer (version, REST API) when the footer scrolls into
+   * view, instead of sitting on top of it.
+   */
+  function keepClearOfFooter(launcher) {
+    var footer = document.querySelector("footer.page-footer, footer");
+    if (!footer) {
+      return;
+    }
+    var scheduled = false;
+    function place() {
+      scheduled = false;
+      var rect = footer.getBoundingClientRect();
+      // Jenkins hides the footer on small screens; a hidden footer reports a top of 0.
+      var shown = rect.height > 0 && footer.getClientRects().length > 0;
+      var overlap = shown ? Math.max(0, window.innerHeight - rect.top) : 0;
+      launcher.style.bottom = "calc(" + (20 + overlap) + "px + env(safe-area-inset-bottom, 0px))";
+    }
+    function schedule() {
+      if (!scheduled) {
+        scheduled = true;
+        window.requestAnimationFrame(place);
+      }
+    }
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    place();
+  }
+
   function initPanel() {
-    var launcher = el("button", "jenkins-button jenkins-button--primary concierge-launcher", "Ask Concierge");
+    var launcher = el("button", "concierge-launcher");
     launcher.type = "button";
     launcher.setAttribute("aria-expanded", "false");
+    launcher.setAttribute("aria-label", "Ask Concierge about this page");
+    launcher.appendChild(bellIcon());
+    // Shown on hover and keyboard focus; screen readers get the same words from aria-label.
+    var tooltip = el("span", "concierge-launcher__tooltip", "Ask Concierge about this page");
+    tooltip.setAttribute("aria-hidden", "true");
+    launcher.appendChild(tooltip);
 
     var panel = el("aside", "concierge-panel");
     panel.setAttribute("aria-label", "Concierge assistant");
@@ -390,6 +451,7 @@
     panel.appendChild(body);
     document.body.appendChild(panel);
     document.body.appendChild(launcher);
+    keepClearOfFooter(launcher);
 
     var chat = new Chat(body);
     var loaded = false;
