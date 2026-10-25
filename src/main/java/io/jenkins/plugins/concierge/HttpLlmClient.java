@@ -31,6 +31,9 @@ final class HttpLlmClient implements Llm.Client {
     private final String baseUrl;
     private final String model;
 
+    // Held in memory for one question and never serialized: this class is not Serializable and is
+    // never saved. The key itself lives in the Credentials plugin or in a Secret.
+    @SuppressWarnings("lgtm[jenkins/plaintext-storage]")
     @CheckForNull
     private final String apiKey;
 
