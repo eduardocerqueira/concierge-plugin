@@ -10,8 +10,9 @@
 #   ./scripts/demo.sh --stop                       # tear it all down again
 #
 # It builds this plugin from source, bakes it into a throwaway image with the plugins it needs,
-# starts it, and seeds users, folders and jobs: admin sees everything, alice is a payments developer
-# who may build and use the assistant, bob may only read payments. See docs/demo.md.
+# starts it, and seeds users, folders and thirteen jobs: admin sees everything, alice is a payments
+# developer who may build and use the assistant, and bob may only read. A platform folder is visible
+# to admin only, and payments/release-train has seven kinds of parameter. See docs/demo.md.
 
 set -euo pipefail
 
@@ -205,11 +206,13 @@ ${GREEN}${BOLD}Ready.${RESET}  ${BOLD}${BASE}/concierge/${RESET}
 
   Sign in as each of these and compare what you see (password = user name):
       ${BOLD}admin${RESET}  everything, including the platform folder and every setting
-      ${BOLD}alice${RESET}  payments developer: reads and builds payments/*, uses the assistant
-      ${BOLD}bob${RESET}    read-only on payments/*, no assistant
+      ${BOLD}alice${RESET}  payments developer: builds payments/*, uses the assistant
+      ${BOLD}bob${RESET}    read-only, no assistant
+      Neither of them can see the platform folder.
 
   ${ASSISTANT}
 
+  Try a build with parameters: payments/release-train (as alice, ask the assistant)
   Things to try: docs/demo.md
   Tear down:     ./scripts/demo.sh --stop
 
