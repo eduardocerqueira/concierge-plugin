@@ -48,6 +48,9 @@ Curation is filled in: a welcome message and four pinned jobs, one of them in `p
 With an AI option, the assistant is on, shares build logs and job configuration, and may propose
 builds of `payments/**`.
 
+The Dark Theme plugin is installed too, so everything can be checked in both themes: pick **Dark**
+under your user menu → **Appearance**.
+
 ## Options
 
 | Option | Effect |
@@ -127,6 +130,12 @@ Open <http://localhost:8080/concierge/> and work through these. Each one checks 
 As **admin**, open **Manage Jenkins → System → Concierge assistant**. Try **Test connection**,
 switch the provider to DeepSeek without ticking **Allow DeepSeek** and save (refused), and look at
 the help for each field.
+
+### 7. Dark theme
+
+As anyone, pick **Dark** under the user menu → **Appearance**, then repeat a few of the steps above.
+The welcome page, tours, the chat window and its proposal cards, curation, usage and settings all
+take their colours from the Jenkins theme.
 
 ## Tearing down
 
