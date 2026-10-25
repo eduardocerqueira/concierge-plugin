@@ -247,6 +247,17 @@ class OnboardingTest {
     }
 
     @Test
+    void systemConfigurationPageStillRendersAndSaves() throws Exception {
+        // ConciergeConfiguration has no config.jelly; if Jenkins tried to include one, the System
+        // page would break part-way through for every administrator.
+        JenkinsRule.WebClient admin = r.createWebClient().login("admin");
+        HtmlPage configure = admin.goTo("configure");
+        assertEquals(200, configure.getWebResponse().getStatusCode());
+        assertNotNull(configure.getFormByName("config"));
+        r.submit(configure.getFormByName("config"));
+    }
+
+    @Test
     void configurationKeepsItsLimits() {
         ConciergeConfiguration config = ConciergeConfiguration.get();
         config.setWelcomeMessage("x".repeat(ConciergeConfiguration.MAX_WELCOME_LENGTH + 50));

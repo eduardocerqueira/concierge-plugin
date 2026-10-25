@@ -39,6 +39,16 @@ public class ConciergeConfiguration extends GlobalConfiguration {
         return GlobalConfiguration.all().getInstance(ConciergeConfiguration.class);
     }
 
+    /**
+     * Not on the system configuration page: these settings have their own page. Without this,
+     * Jenkins looks for a {@code config.jelly} that does not exist and the system configuration
+     * page fails part-way through rendering.
+     */
+    @Override
+    public String getGlobalConfigPage() {
+        return null;
+    }
+
     @NonNull
     public String getWelcomeMessage() {
         return welcomeMessage == null ? "" : welcomeMessage;
