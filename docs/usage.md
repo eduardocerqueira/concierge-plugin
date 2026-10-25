@@ -93,9 +93,9 @@ administrators.
 
 ### Cost and budget
 
-Every answer shows the tokens it used and its estimated cost, for example
-`3,000 in / 300 out tokens · under $0.01`. The estimate uses the token counts the provider reports
-and the model's price as shown in the settings; your provider's bill is what counts.
+Concierge counts the tokens every question uses and estimates its cost, from the token counts the
+provider reports and the model's price as shown in the settings; your provider's bill is what
+counts. Answers in the chat do not show it.
 
 Administrators see **Assistant usage** on the Concierge page (`/concierge/usage`): this month's
 questions, tokens and estimated cost per person, against the budget, and earlier months' totals.
@@ -109,9 +109,11 @@ towards the budget.
 
 ### Audit
 
-Every question, tool call (name and arguments) and outcome is logged to the
-`io.jenkins.plugins.concierge.audit` logger. Tool results and API keys never are. Add a log recorder
-for that logger under **Manage Jenkins → System Log** to keep a trail.
+Every question, tool call and outcome is logged to the `io.jenkins.plugins.concierge.audit` logger.
+At `INFO`, which reaches the system log, that is who asked, on which page, and which tools ran. The
+question text and tool arguments are logged at `FINE`, because anyone with Overall/SystemRead can
+read the system log. To keep a full trail, add a log recorder for that logger at `FINE` under
+**Manage Jenkins → System Log**. Tool results and API keys are never logged.
 
 ### Conversation
 

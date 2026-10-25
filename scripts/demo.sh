@@ -195,7 +195,7 @@ info "Concierge $VERSION is installed"
 # ------------------------------------------------------------------ done
 
 if [ -n "$PROVIDER" ]; then
-    ASSISTANT="assistant on (${PROVIDER}${MODEL:+, $MODEL}): sign in as alice or admin and click Ask Concierge"
+    ASSISTANT="assistant on (${PROVIDER}${MODEL:+, $MODEL}): sign in as alice or admin and click the bell in the bottom-right corner"
 else
     ASSISTANT="assistant off. Re-run with --anthropic, --openai, --xai or --ollama MODEL to try it"
 fi

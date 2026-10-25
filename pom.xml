@@ -35,9 +35,7 @@
 
   <properties>
     <changelist>999999-SNAPSHOT</changelist>
-    <!-- Points at the personal repository until hosting is granted; becomes
-         jenkinsci/concierge-plugin when the repository moves. -->
-    <gitHubRepo>eduardocerqueira/concierge-plugin</gitHubRepo>
+    <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
 
     <!-- Guard rails required for hosting. Each turns a class of accident into a build failure:
          bundling a third-party library by mistake, keeping a dependency override that a newer BOM
@@ -53,7 +51,7 @@
          part of the gate rather than a claim. `mvn spotless:apply` fixes anything it complains about. -->
     <spotless.check.skip>false</spotless.check.skip>
 
-    <!-- Jenkins baseline: the newest LTS line, the same as Live Wall. -->
+    <!-- Jenkins baseline: the newest LTS line. -->
     <jenkins.baseline>2.568</jenkins.baseline>
     <jenkins.version>${jenkins.baseline}.3</jenkins.version>
   </properties>
@@ -63,7 +61,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-${jenkins.baseline}.x</artifactId>
-        <version>7216.v6cb_72de2015d</version>
+        <version>7237.v5071b_f4589f1</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

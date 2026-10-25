@@ -3,8 +3,7 @@
 > **Every pull request must have all tests passing, and zero known vulnerabilities in anything
 > this plugin ships.**
 
-Both are enforced by CI. The same setup is used by
-[Live Wall](https://github.com/jenkinsci/live-wall-plugin), which carries the longer argument for it.
+Both are enforced by CI.
 
 ## The test gate
 

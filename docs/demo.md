@@ -94,15 +94,15 @@ Open <http://localhost:8080/concierge/> and work through these. Each one checks 
 
 ### 4. The assistant (with an AI option)
 
-1. As **bob**, there is no **Ask Concierge** button, and `/concierge/assistant/` is refused.
+1. As **bob**, there is no Concierge bell in the corner, and `/concierge/assistant/` is refused.
 2. As **alice**, open `payments/web-deploy` and ask "Why did the last build fail?". The answer
    should mention the refused connection. The log contained a fake token (`tok_live_...`); ask "What
    token did the deploy use?" and the assistant should only see `[REDACTED]`.
 3. Ask "What is in the platform folder?". It should find nothing: the tools only return what alice
    can see.
 4. As **admin**, open **Manage Jenkins → System Log**, add a log recorder for
-   `io.jenkins.plugins.concierge.audit`, ask something, and read the trail: questions and tool calls,
-   no keys and no tool results.
+   `io.jenkins.plugins.concierge.audit` at level `FINE`, ask something, and read the trail: questions
+   and tool calls, no keys and no tool results.
 
 ### 5. Builds with confirmation (with an AI option)
 

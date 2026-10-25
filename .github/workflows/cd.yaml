@@ -1,0 +1,34 @@
+# Releases this plugin: every successful build on ci.jenkins.io of a merge with a pull request
+# labelled for the changelog publishes a new version. It does nothing until the repository is
+# hosted in jenkinsci and CD is enabled in its permissions file, which provides MAVEN_USERNAME and
+# MAVEN_TOKEN. Background: https://www.jenkins.io/redirect/continuous-delivery-of-plugins
+---
+name: cd
+on:
+  workflow_dispatch:
+    inputs:
+      validate_only:
+        required: false
+        type: boolean
+        description: |
+          Run validation with release drafter only
+          → Skip the release job
+        default: false
+  check_run:
+    types:
+      - completed
+
+permissions:
+  checks: read
+  contents: write
+
+jobs:
+  maven-cd:
+    # Pinned to a commit rather than the mutable @v1 tag: this is the workflow that receives the
+    # Artifactory credentials. Matches the pin in jenkinsci/archetypes.
+    uses: jenkins-infra/github-reusable-workflows/.github/workflows/maven-cd.yml@c2470861b1ad94810dc0d207b011e0b57bb91bbb # v1
+    with:
+      validate_only: ${{ inputs.validate_only == true }}
+    secrets:
+      MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+      MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
