@@ -1,0 +1,92 @@
+<?jelly escape-by-default='true'?>
+<!-- Assistant usage this month. Administrators only (UsagePage.getTarget). Counts only: no questions or answers are stored. -->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="${it.displayName}" type="one-column">
+    <l:main-panel>
+      <div class="concierge">
+        <p class="concierge-eyebrow"><a href="..">Concierge</a></p>
+        <h1>${%Assistant usage}</h1>
+        <p class="concierge-muted">${%intro(it.month, it.model)}</p>
+        <j:set var="total" value="${it.total}"/>
+        <ul class="concierge-stats">
+          <li class="concierge-stat">
+            <span class="concierge-stat__value">${it.money(total.cost)}</span>
+            <span class="concierge-stat__label">
+              <j:choose>
+                <j:when test="${it.budget != null}">${%of budget(it.budget, it.budgetPercent)}</j:when>
+                <j:otherwise>${%estimated this month, no budget set}</j:otherwise>
+              </j:choose>
+            </span>
+          </li>
+          <li class="concierge-stat">
+            <span class="concierge-stat__value">${total.questions}</span>
+            <span class="concierge-stat__label">${%questions}</span>
+          </li>
+          <li class="concierge-stat">
+            <span class="concierge-stat__value">${total.inputTokens}</span>
+            <span class="concierge-stat__label">${%input tokens}</span>
+          </li>
+          <li class="concierge-stat">
+            <span class="concierge-stat__value">${total.outputTokens}</span>
+            <span class="concierge-stat__label">${%output tokens}</span>
+          </li>
+        </ul>
+        <j:if test="${it.budget != null}">
+          <div class="concierge-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${it.budgetPercent}" aria-label="${%Budget used}">
+            <div class="concierge-meter__fill" data-percent="${it.budgetPercent}"/>
+          </div>
+        </j:if>
+        <p class="concierge-muted">
+          <j:choose>
+            <j:when test="${it.price != null}">${%Price used:} ${it.price}</j:when>
+            <j:otherwise>${%priceUnknown}</j:otherwise>
+          </j:choose>
+        </p>
+
+        <section class="concierge-section">
+          <h2>${%By person}</h2>
+          <j:choose>
+            <j:when test="${it.rows.isEmpty()}">
+              <p class="concierge-muted">${%Nobody has asked anything this month.}</p>
+            </j:when>
+            <j:otherwise>
+              <table class="jenkins-table sortable">
+                <thead>
+                  <tr><th>${%User}</th><th>${%Questions}</th><th>${%Input tokens}</th><th>${%Output tokens}</th><th>${%Estimated cost}</th><th>${%Price unknown}</th><th>${%Own key}</th></tr>
+                </thead>
+                <tbody>
+                  <j:forEach var="row" items="${it.rows}">
+                    <tr>
+                      <td>${row.name}</td>
+                      <td>${row.entry.questions}</td>
+                      <td>${row.entry.inputTokens}</td>
+                      <td>${row.entry.outputTokens}</td>
+                      <td>${row.cost}</td>
+                      <td>${row.entry.unpricedQuestions}</td>
+                      <td>${row.entry.ownKeyQuestions}</td>
+                    </tr>
+                  </j:forEach>
+                </tbody>
+              </table>
+            </j:otherwise>
+          </j:choose>
+        </section>
+
+        <j:if test="${!it.history.isEmpty()}">
+          <section class="concierge-section">
+            <h2>${%Earlier months}</h2>
+            <table class="jenkins-table">
+              <thead><tr><th>${%Month}</th><th>${%Questions}</th><th>${%Estimated cost}</th></tr></thead>
+              <tbody>
+                <j:forEach var="row" items="${it.history}">
+                  <tr><td>${row.name}</td><td>${row.entry.questions}</td><td>${row.cost}</td></tr>
+                </j:forEach>
+              </tbody>
+            </table>
+          </section>
+        </j:if>
+      </div>
+      <script src="${resURL}/plugin/concierge/js/usage.js" type="text/javascript"/>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

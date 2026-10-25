@@ -121,6 +121,13 @@ public class AssistantEndpoint implements StaplerProxy {
         }
 
         String userKey = UserKeyProperty.forCurrentUser();
+        java.math.BigDecimal budget = config.getBudget();
+        if (userKey == null
+                && budget != null
+                && UsageLedger.get().instanceCostThisMonth().compareTo(budget) >= 0) {
+            Assistant.AUDIT.info(() -> "budget-reached user=" + userId);
+            return error(429, Messages.Usage_budgetReached(ModelPrice.money(budget)));
+        }
         String key = userKey != null ? userKey : config.lookupApiKey();
         if (config.getProvider().isKeyRequired() && key == null) {
             return error(503, Messages.Assistant_notConfigured());
@@ -156,6 +163,15 @@ public class AssistantEndpoint implements StaplerProxy {
             result.put("status", "ok");
             result.put("answer", answer.text());
             result.put("tools", answer.toolsUsed());
+            ModelPrice price = config.getPrice();
+            java.math.BigDecimal cost = price == null ? null : price.cost(answer.inputTokens(), answer.outputTokens());
+            UsageLedger.get().record(userId, answer.inputTokens(), answer.outputTokens(), cost, userKey != null);
+            Map<String, Object> usage = new LinkedHashMap<>();
+            usage.put("inputTokens", answer.inputTokens());
+            usage.put("outputTokens", answer.outputTokens());
+            usage.put("cost", cost == null ? null : cost.toPlainString());
+            usage.put("ownKey", userKey != null);
+            result.put("usage", usage);
             List<Object> proposed = new ArrayList<>();
             if (proposals != null) {
                 proposals.takeMadeNow().forEach(p -> proposed.add(p.toJson()));

@@ -84,6 +84,22 @@ knows which page you are on, so "why did this fail?" works on a job or build pag
 **Test connection** sends one short request with the settings on the form. It is only available to
 administrators.
 
+### Cost and budget
+
+Every answer shows the tokens it used and its estimated cost, for example
+`3,000 in / 300 out tokens · under $0.01`. The estimate uses the token counts the provider reports
+and the model's price as shown in the settings; your provider's bill is what counts.
+
+Administrators see **Assistant usage** on the Concierge page (`/concierge/usage`): this month's
+questions, tokens and estimated cost per person, against the budget, and earlier months' totals.
+Only counts are stored, never questions or answers, in
+`JENKINS_HOME/io.jenkins.plugins.concierge.UsageLedger.xml`, for twelve months.
+
+**Monthly budget (USD)** caps the estimated cost per calendar month (UTC). Once reached, questions
+are refused until the next month or until the budget is raised. Questions for a model with no known
+price are counted but cannot be costed, and questions asked with a person's own key never count
+towards the budget.
+
 ### Audit
 
 Every question, tool call (name and arguments) and outcome is logged to the

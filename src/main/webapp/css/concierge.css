@@ -56,6 +56,12 @@
   justify-content: space-between;
 }
 
+.concierge-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .concierge-hero__text {
   max-width: 70ch;
 }
@@ -564,4 +570,30 @@
 
 .concierge-proposal__status:empty {
   display: none;
+}
+
+/* ------------------------------------------------------------------ usage */
+
+.concierge-meter {
+  height: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--card-border-color, rgba(128, 128, 128, 0.25));
+}
+
+.concierge-meter__fill {
+  width: 0;
+  height: 100%;
+  background: var(--green, #2e9e5b);
+}
+
+.concierge-meter__fill--high {
+  background: var(--red, #d33833);
+}
+
+.concierge-chat__usage {
+  margin: 0.25rem 0 0 !important;
+  color: var(--text-color-secondary, #5c6370);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }

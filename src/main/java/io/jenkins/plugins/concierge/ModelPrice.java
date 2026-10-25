@@ -43,6 +43,17 @@ public record ModelPrice(BigDecimal inputPerMillion, BigDecimal outputPerMillion
                 .divide(million, 6, RoundingMode.HALF_UP);
     }
 
+    /** A cost for display: "$12.35", or up to four decimals under a cent ("$0.0042"). */
+    static String dollars(BigDecimal value) {
+        if (value.signum() != 0 && value.abs().compareTo(new BigDecimal("0.01")) < 0) {
+            return "$"
+                    + value.setScale(4, RoundingMode.HALF_UP)
+                            .stripTrailingZeros()
+                            .toPlainString();
+        }
+        return "$" + value.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
     static String money(BigDecimal value) {
         BigDecimal scaled = value.setScale(2, RoundingMode.HALF_UP);
         // Keep sub-cent prices readable: $0.10, but $0.075 rather than $0.08.

@@ -184,7 +184,13 @@ final class HttpLlmClient implements Llm.Client {
                         input instanceof Map ? (Map<String, Object>) input : Map.of()));
             }
         }
-        return new Llm.Reply(text.toString(), calls);
+        Map<String, Object> usage = Json.object(json, "usage");
+        // Cached and newly cached input tokens are billed too, at their own rates; counting them as
+        // input keeps the estimate on the safe side.
+        long input = number(usage, "input_tokens")
+                + number(usage, "cache_creation_input_tokens")
+                + number(usage, "cache_read_input_tokens");
+        return new Llm.Reply(text.toString(), calls, input, number(usage, "output_tokens"));
     }
 
     // ------------------------------------------------------------------ OpenAI-compatible
@@ -259,6 +265,12 @@ final class HttpLlmClient implements Llm.Client {
             }
             calls.add(new Llm.ToolCall(Json.string(call, "id", ""), Json.string(function, "name", ""), parsed));
         }
-        return new Llm.Reply(text, calls);
+        Map<String, Object> usage = Json.object(json, "usage");
+        return new Llm.Reply(text, calls, number(usage, "prompt_tokens"), number(usage, "completion_tokens"));
+    }
+
+    private static long number(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value instanceof Number n ? Math.max(0, n.longValue()) : 0;
     }
 }
