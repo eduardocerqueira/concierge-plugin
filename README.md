@@ -53,21 +53,23 @@ log, the job's history. It uses read-only tools that run as you, so it can never
 can. Logs are stripped of secrets before they leave the controller, and an administrator decides
 what kinds of data may be shared at all.
 
-![The Ask Concierge panel open beside a failing job. Asked why the last build failed, the assistant
-quotes the end of the console log, "ERROR: connection refused (staging.payments.internal:8443)",
-explains that the deploy step could not reach its server, and lists what to check. Underneath:
-"Looked at: get build, get build log".](docs/images/assistant.png)
+![The Concierge chat window floating over a failing job. Asked why the last build failed, the
+assistant quotes the end of the console log in a code block, "ERROR: connection refused
+(staging.payments.internal:8443)", explains that the deploy step could not reach its server, and
+lists what to check. Underneath: "Looked at" with chips for get build and get build
+log.](docs/images/assistant.png)
 
-*Every answer says which tools it used. The panel is on every page, and knows which page you are
-on.*
+*The chat floats over every page and knows which page you are on. Drag its corner to resize it,
+or expand it. Every answer says which tools it used.*
 
 When it is allowed to, the assistant can also propose running a job. It never starts anything
 itself: a card shows the job and every parameter value, and nothing runs until you click
 **Run it**. Everything is checked again at that moment, and the build is started as you.
 
-![The assistant has proposed running payments/api-build again. A card asks "Run
-payments/api-build again (like #1)?", shows BRANCH main, and offers Run it and
-Cancel.](docs/images/build-proposal.png)
+![The assistant has proposed running payments/release-train again. A card asks "Run
+payments/release-train again (like #3)?" and lists all seven parameters, VERSION, ENVIRONMENT,
+REGION, CANARY_PERCENT, RUN_SMOKE_TESTS, RELEASE_NOTES and DEPLOY_TOKEN shown as hidden, with Run
+it and Cancel.](docs/images/build-proposal.png)
 
 *The card is built from the stored proposal, never from the model's text. Password parameters can
 never be set by the assistant, and re-runs never copy secret values.*
@@ -107,7 +109,7 @@ Requires **Jenkins 2.568.3 or newer** on **Java 21 or newer**.
 | **Start here** | Up to 12 pinned jobs with a note on each, curated by anyone with the Concierge/ManageTours permission |
 | **Guided tours** | Start here, the dashboard, and a job with its build history, last build and console |
 | **Learning paths** | New to Jenkins, Developer and DevOps, with progress saved per person |
-| **Assistant** | A panel on every page and a full-page chat, answering from jobs, builds, test results, the queue, agents and plugins |
+| **Assistant** | A floating, resizable chat on every page and a full-page view, answering from jobs, builds, test results, the queue, agents and plugins |
 | **Providers** | Anthropic, OpenAI, xAI Grok, DeepSeek (only once explicitly allowed), or a local model such as Ollama, optionally through an AI gateway |
 | **Builds from the chat** | Proposed by the assistant, confirmed by the person, limited to jobs an administrator lists |
 | **Cost** | Tokens and estimated cost on every answer, a monthly usage page, and an optional monthly budget |

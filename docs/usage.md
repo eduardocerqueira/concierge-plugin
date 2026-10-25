@@ -59,8 +59,15 @@ One list serves everyone: each person only sees the pinned jobs they can read.
 ## The AI assistant
 
 Off until an administrator turns it on under **Manage Jenkins → System → Concierge assistant**.
-People with the Concierge/Assistant permission then get an **Ask Concierge** button on every page.
-It opens a side panel; **Full page** opens the same conversation at `/concierge/assistant`.
+People with the Concierge/Assistant permission then get a round bell button at the bottom right of
+every page. It opens a floating chat window:
+
+- Drag its top-left corner to resize it (or focus the corner and use the arrow keys). The size is
+  remembered in your browser.
+- **Expand** makes it as large as the screen allows; **New conversation** clears it; **Open as a
+  full page** opens the same conversation at `/concierge/assistant`; Escape or the bell closes it.
+- Each message shows who wrote it and when, with day dividers. Answers show which tools were used,
+  and code blocks and whole answers can be copied.
 
 The assistant answers by calling read-only tools that run as the person asking: job lists and
 details, builds, test counts, the build queue, agents, and, for Overall/SystemRead, plugins. It

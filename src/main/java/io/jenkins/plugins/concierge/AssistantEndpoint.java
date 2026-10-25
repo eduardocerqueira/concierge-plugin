@@ -75,13 +75,13 @@ public class AssistantEndpoint implements StaplerProxy {
 
     /** The conversation so far, for the chat page. */
     @NonNull
-    public List<Map<String, String>> getConversation(StaplerRequest2 req) {
-        List<Map<String, String>> out = new ArrayList<>();
+    public List<Map<String, Object>> getConversation(StaplerRequest2 req) {
+        List<Map<String, Object>> out = new ArrayList<>();
         for (Llm.Turn turn : history(req.getSession(false))) {
             if (turn instanceof Llm.UserTurn user) {
-                out.add(Map.of("role", "user", "text", user.text()));
+                out.add(Map.of("role", "user", "text", user.text(), "at", user.at()));
             } else if (turn instanceof Llm.AssistantTurn assistant) {
-                out.add(Map.of("role", "assistant", "text", assistant.text()));
+                out.add(Map.of("role", "assistant", "text", assistant.text(), "at", assistant.at()));
             }
         }
         return out;
@@ -94,6 +94,7 @@ public class AssistantEndpoint implements StaplerProxy {
                 Map.of(
                         "status", "ok",
                         "provider", AssistantConfiguration.get().getProvider().getDisplayName(),
+                        "user", currentUserName(),
                         "turns", getConversation(req)));
     }
 
@@ -137,6 +138,7 @@ public class AssistantEndpoint implements StaplerProxy {
             literals.add(key);
         }
         HttpSession session = req.getSession(true);
+        long askedAt = System.currentTimeMillis();
         List<Llm.Turn> history = history(session);
         BuildProposals proposals = config.isAllowActions() ? proposals(session) : null;
         Redactor redactor = new Redactor(literals);
@@ -151,8 +153,8 @@ public class AssistantEndpoint implements StaplerProxy {
         try {
             Assistant.Answer answer = assistant.ask(redactor.redact(text), cleanPage(page), history);
             List<Llm.Turn> updated = new ArrayList<>(history);
-            updated.add(new Llm.UserTurn(redactor.redact(text)));
-            updated.add(new Llm.AssistantTurn(answer.text(), List.of()));
+            updated.add(new Llm.UserTurn(redactor.redact(text), askedAt));
+            updated.add(new Llm.AssistantTurn(answer.text(), List.of(), System.currentTimeMillis()));
             while (updated.size() > HISTORY_TURNS) {
                 updated.remove(0);
             }
@@ -162,6 +164,8 @@ public class AssistantEndpoint implements StaplerProxy {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("status", "ok");
             result.put("answer", answer.text());
+            result.put("askedAt", askedAt);
+            result.put("at", System.currentTimeMillis());
             result.put("tools", answer.toolsUsed());
             ModelPrice price = config.getPrice();
             java.math.BigDecimal cost = price == null ? null : price.cost(answer.inputTokens(), answer.outputTokens());
@@ -239,6 +243,13 @@ public class AssistantEndpoint implements StaplerProxy {
     static BuildProposals proposals(@NonNull HttpSession session) {
         Object stored = session.getAttribute(PROPOSALS);
         return stored instanceof BuildProposals p ? p : new BuildProposals();
+    }
+
+    /** The signed-in user's name for the chat's avatar, or empty for anonymous. */
+    @NonNull
+    static String currentUserName() {
+        User user = User.current();
+        return user == null ? "" : user.getDisplayName();
     }
 
     /** Forgets the conversation. */
