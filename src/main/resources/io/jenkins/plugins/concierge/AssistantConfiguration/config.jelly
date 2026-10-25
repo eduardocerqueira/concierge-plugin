@@ -7,20 +7,24 @@
     <f:entry title="${%Provider}" field="provider">
       <f:select/>
     </f:entry>
-    <f:entry title="${%Model}" field="model">
-      <f:textbox/>
-    </f:entry>
+
     <f:entry title="${%API key}" field="credentialsId">
       <c:select/>
     </f:entry>
     <f:entry title="${%Base URL}" field="baseUrl">
       <f:textbox/>
     </f:entry>
+    <f:entry title="${%Model}" field="selectedModel">
+      <f:select/>
+    </f:entry>
+    <f:entry title="${%Custom model id}" field="customModel">
+      <f:textbox/>
+    </f:entry>
     <f:entry field="allowDeepSeek">
       <f:checkbox title="${%Allow DeepSeek, whose hosted API stores data in China}"/>
     </f:entry>
     <f:validateButton title="${%Test connection}" progress="${%Testing...}" method="testConnection"
-                      with="provider,model,credentialsId,baseUrl,allowDeepSeek"/>
+                      with="provider,selectedModel,customModel,credentialsId,baseUrl,allowDeepSeek"/>
 
     <f:entry title="${%What the assistant may see}" field="shareLogs" description="${%sharing.description}">
       <f:checkbox title="${%Build logs, with secrets removed}"/>
@@ -39,6 +43,9 @@
     </f:entry>
     <f:entry title="${%Most tool calls per question}" field="maxToolCalls">
       <f:number clazz="positive-number" min="1" max="20" default="8"/>
+    </f:entry>
+    <f:entry title="${%Model prices}" field="modelPrices">
+      <f:textarea/>
     </f:entry>
     <f:entry title="${%Builds}" field="allowActions">
       <f:checkbox title="${%Let the assistant propose builds, which the person confirms}"/>
