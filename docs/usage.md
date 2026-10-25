@@ -9,7 +9,7 @@ page. Everything on it is computed for the person looking at it, from what they 
 | --- | --- | --- |
 | Concierge/Use | Overall/Read | The welcome page, learning paths and tours. |
 | Concierge/ManageTours | Overall/Administer | Editing the welcome message and the "start here" jobs. |
-| Concierge/Assistant | Overall/Administer | The AI assistant (phase 2). |
+| Concierge/Assistant | Overall/Administer | The AI assistant. |
 
 With matrix-based security you can grant Concierge/ManageTours to a team lead who is not an
 administrator.

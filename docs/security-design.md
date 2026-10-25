@@ -58,7 +58,7 @@ most common advisories.
   models can run locally instead.
 - Traffic can optionally go through Cloudflare AI Gateway for logging, rate limits and DLP. That adds
   to Concierge's redaction; it does not replace it.
-- Onboarding (phase 1) sends nothing anywhere.
+- The welcome page, tours and learning paths send nothing anywhere.
 
 ## 5. Untrusted text stays inert
 

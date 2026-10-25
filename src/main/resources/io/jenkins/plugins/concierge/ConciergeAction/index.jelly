@@ -106,7 +106,7 @@
             <j:forEach var="tour" items="${it.tours}">
               <li class="concierge-tour">
                 <h3>${tour.title}</h3>
-                <p>${tour.text}</p>
+                <div class="concierge-tour__text">${tour.text}</div>
                 <button type="button" class="jenkins-button jenkins-button--primary" data-concierge-tour="${tour.id}">
                   ${%Start the tour}
                 </button>

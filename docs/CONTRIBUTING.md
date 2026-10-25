@@ -1,7 +1,9 @@
 # Contributing
 
-Thanks for looking. Concierge is at the proposal stage, so the most useful contributions right now
-are comments on [roadmap.md](roadmap.md) and [security-design.md](security-design.md), in an issue.
+Thanks for looking. Concierge helps people find their way around a Jenkins instance and answers
+questions about it, so the two things to keep in mind are: everyone sees only what they may, and
+nothing changes without a person confirming it. [security-design.md](security-design.md) spells
+both out.
 
 ## The bar
 
