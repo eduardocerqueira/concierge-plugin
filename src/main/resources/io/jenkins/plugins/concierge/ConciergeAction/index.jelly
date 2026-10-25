@@ -1,0 +1,211 @@
+<?jelly escape-by-default='true'?>
+<!--
+  The welcome page. Everything on it is computed for the person looking at it (InstanceOverview,
+  LearningPath, StartHereEntry), and every piece of text, including the curated welcome message and
+  notes, is written escaped. No inline script: behaviour lives in welcome.js and tour.js.
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="${it.displayName}" type="one-column">
+    <l:main-panel>
+      <j:set var="o" value="${it.overview}"/>
+      <div class="concierge" id="concierge-welcome"
+           data-progress-url="${rootURL}/${it.urlName}/progress"
+           data-logged-in="${it.loggedIn}">
+
+        <header class="concierge-hero">
+          <div class="concierge-hero__text">
+            <p class="concierge-eyebrow">Concierge</p>
+            <h1>${%Welcome to this Jenkins}</h1>
+            <j:choose>
+              <j:when test="${!empty(it.welcomeMessage)}">
+                <p class="concierge-welcome">${it.welcomeMessage}</p>
+              </j:when>
+              <j:otherwise>
+                <p class="concierge-welcome">${%intro}</p>
+              </j:otherwise>
+            </j:choose>
+          </div>
+          <j:if test="${it.canManageTours}">
+            <a class="jenkins-button" href="manage">${%Edit welcome and start here}</a>
+          </j:if>
+        </header>
+
+        <section class="concierge-section" aria-labelledby="concierge-overview-title">
+          <h2 id="concierge-overview-title">${%At a glance}</h2>
+          <ul class="concierge-stats">
+            <li class="concierge-stat">
+              <span class="concierge-stat__value">${o.jobCount}</span>
+              <span class="concierge-stat__label">${%jobs you can see}</span>
+            </li>
+            <li class="concierge-stat concierge-stat--failure">
+              <span class="concierge-stat__value">${o.getCount('failure')}</span>
+              <span class="concierge-stat__label">${%failing}</span>
+            </li>
+            <li class="concierge-stat concierge-stat--unstable">
+              <span class="concierge-stat__value">${o.getCount('unstable')}</span>
+              <span class="concierge-stat__label">${%unstable}</span>
+            </li>
+            <li class="concierge-stat concierge-stat--success">
+              <span class="concierge-stat__value">${o.getCount('success')}</span>
+              <span class="concierge-stat__label">${%passing}</span>
+            </li>
+            <li class="concierge-stat">
+              <span class="concierge-stat__value">${o.building.size()}</span>
+              <span class="concierge-stat__label">${%building now}</span>
+            </li>
+            <li class="concierge-stat">
+              <span class="concierge-stat__value">${o.queueLength}</span>
+              <span class="concierge-stat__label">${%waiting in the queue}</span>
+            </li>
+            <li class="concierge-stat">
+              <span class="concierge-stat__value">${o.agentsOnline}/${o.agentCount}</span>
+              <span class="concierge-stat__label">${%agents online}</span>
+            </li>
+            <li class="concierge-stat">
+              <span class="concierge-stat__value">${o.busyExecutors}/${o.executors}</span>
+              <span class="concierge-stat__label">${%executors busy}</span>
+            </li>
+            <j:if test="${o.pluginsVisible}">
+              <li class="concierge-stat">
+                <span class="concierge-stat__value">${o.pluginCount}</span>
+                <span class="concierge-stat__label">${%plugins.label(o.pluginUpdates)}</span>
+              </li>
+            </j:if>
+          </ul>
+        </section>
+
+        <j:set var="startHere" value="${it.startHere}"/>
+        <j:if test="${!startHere.isEmpty()}">
+          <section class="concierge-section" aria-labelledby="concierge-start-title">
+            <h2 id="concierge-start-title">${%Start here}</h2>
+            <ol class="concierge-pinned">
+              <j:forEach var="entry" items="${startHere}">
+                <li>
+                  <a href="${rootURL}/${entry.job.url}" class="concierge-job">
+                    <span class="concierge-status concierge-status--${entry.job.status}" aria-hidden="true"/>
+                    ${entry.job.displayName}
+                  </a>
+                  <j:if test="${!empty(entry.note)}">
+                    <p class="concierge-note">${entry.note}</p>
+                  </j:if>
+                </li>
+              </j:forEach>
+            </ol>
+          </section>
+        </j:if>
+
+        <section class="concierge-section" aria-labelledby="concierge-tours-title">
+          <h2 id="concierge-tours-title">${%Guided tours}</h2>
+          <p class="concierge-muted">${%tours.intro}</p>
+          <ul class="concierge-tours">
+            <j:forEach var="tour" items="${it.tours}">
+              <li class="concierge-tour">
+                <h3>${tour.title}</h3>
+                <p>${tour.text}</p>
+                <button type="button" class="jenkins-button jenkins-button--primary" data-concierge-tour="${tour.id}">
+                  ${%Start the tour}
+                </button>
+              </li>
+            </j:forEach>
+          </ul>
+        </section>
+
+        <section class="concierge-section concierge-paths" aria-labelledby="concierge-paths-title">
+          <h2 id="concierge-paths-title">${%Learning paths}</h2>
+          <j:if test="${!it.loggedIn}">
+            <p class="concierge-muted">${%Sign in to keep track of the steps you have done.}</p>
+          </j:if>
+          <p class="concierge-error" id="concierge-progress-error" hidden="hidden" role="alert"/>
+          <div class="concierge-path-grid">
+            <j:forEach var="path" items="${it.paths}">
+              <article class="concierge-path" data-path="${path.id}">
+                <header>
+                  <h3>${path.title}</h3>
+                  <span class="concierge-path__count" data-path-count="${path.id}">${path.doneCount}/${path.steps.size()}</span>
+                </header>
+                <p class="concierge-muted">${path.intro}</p>
+                <ol class="concierge-steps">
+                  <j:forEach var="step" items="${path.steps}">
+                    <li class="concierge-step">
+                      <div class="concierge-step__body">
+                        <h4>${step.title}</h4>
+                        <p>${step.text}</p>
+                        <j:choose>
+                          <j:when test="${step.href != null}">
+                            <a href="${rootURL}/${step.href}">${%Show me}</a>
+                          </j:when>
+                          <j:otherwise>
+                            <span class="concierge-muted">${%Nothing to show for this on this instance yet.}</span>
+                          </j:otherwise>
+                        </j:choose>
+                      </div>
+                      <j:if test="${it.loggedIn}">
+                        <label class="concierge-step__done">
+                          <j:choose>
+                            <j:when test="${step.done}">
+                              <input type="checkbox" data-step="${step.id}" data-path="${path.id}" checked="checked"/>
+                            </j:when>
+                            <j:otherwise>
+                              <input type="checkbox" data-step="${step.id}" data-path="${path.id}"/>
+                            </j:otherwise>
+                          </j:choose>
+                          <span>${%Done}</span>
+                        </label>
+                      </j:if>
+                    </li>
+                  </j:forEach>
+                </ol>
+              </article>
+            </j:forEach>
+          </div>
+        </section>
+
+        <div class="concierge-columns">
+          <section class="concierge-section" aria-labelledby="concierge-failing-title">
+            <h2 id="concierge-failing-title">${%Failing now}</h2>
+            <j:choose>
+              <j:when test="${o.failing.isEmpty()}">
+                <p class="concierge-muted">${%Nothing you can see is failing.}</p>
+              </j:when>
+              <j:otherwise>
+                <ul class="concierge-joblist">
+                  <j:forEach var="job" items="${o.failing}">
+                    <li><a href="${rootURL}/${job.url}" class="concierge-job"><span class="concierge-status concierge-status--${job.status}" aria-hidden="true"/>${job.displayName}</a></li>
+                  </j:forEach>
+                </ul>
+              </j:otherwise>
+            </j:choose>
+          </section>
+
+          <section class="concierge-section" aria-labelledby="concierge-recent-title">
+            <h2 id="concierge-recent-title">${%Recently built}</h2>
+            <j:choose>
+              <j:when test="${o.recent.isEmpty()}">
+                <p class="concierge-muted">${%No builds yet.}</p>
+              </j:when>
+              <j:otherwise>
+                <ul class="concierge-joblist">
+                  <j:forEach var="job" items="${o.recent}">
+                    <li><a href="${rootURL}/${job.url}" class="concierge-job"><span class="concierge-status concierge-status--${job.status}" aria-hidden="true"/>${job.displayName}</a></li>
+                  </j:forEach>
+                </ul>
+              </j:otherwise>
+            </j:choose>
+          </section>
+
+          <j:if test="${!o.folders.isEmpty()}">
+            <section class="concierge-section" aria-labelledby="concierge-folders-title">
+              <h2 id="concierge-folders-title">${%How it is organised}</h2>
+              <ul class="concierge-joblist">
+                <j:forEach var="folder" items="${o.folders}">
+                  <li><a href="${rootURL}/${folder.url}">${folder.name}</a> <span class="concierge-muted">${folder.jobCount}</span></li>
+                </j:forEach>
+              </ul>
+            </section>
+          </j:if>
+        </div>
+      </div>
+      <script src="${resURL}/plugin/concierge/js/welcome.js" type="text/javascript"/>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

@@ -1,0 +1,321 @@
+/*
+ * Concierge styles. Colours come from Jenkins' own CSS variables, with fallbacks, so the pages
+ * follow the Jenkins theme (including dark) instead of fighting it.
+ */
+.concierge {
+  --concierge-muted: var(--text-color-secondary, #5c6370);
+  --concierge-card: var(--card-background, var(--background, #fff));
+  --concierge-border: var(--card-border-color, rgba(128, 128, 128, 0.25));
+  --concierge-accent: var(--accent-color, #1d6a86);
+  --concierge-failure: var(--red, #d33833);
+  --concierge-unstable: var(--yellow, #e3a008);
+  --concierge-success: var(--green, #2e9e5b);
+  --concierge-other: var(--text-color-secondary, #8a94a3);
+  display: grid;
+  gap: 2rem;
+  max-width: 1200px;
+}
+
+.concierge h1 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.concierge h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+}
+
+.concierge h3,
+.concierge h4 {
+  margin: 0;
+}
+
+.concierge-eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--concierge-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.concierge-muted {
+  color: var(--concierge-muted);
+}
+
+.concierge-error {
+  color: var(--concierge-failure);
+}
+
+.concierge-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.concierge-hero__text {
+  max-width: 70ch;
+}
+
+.concierge-welcome {
+  margin: 0.5rem 0 0;
+  white-space: pre-line;
+  font-size: 1.05rem;
+}
+
+.concierge-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concierge-stat {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--concierge-border);
+  border-radius: 8px;
+  background: var(--concierge-card);
+}
+
+.concierge-stat__value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.concierge-stat__label {
+  color: var(--concierge-muted);
+  font-size: 0.85rem;
+}
+
+.concierge-stat--failure .concierge-stat__value {
+  color: var(--concierge-failure);
+}
+
+.concierge-stat--unstable .concierge-stat__value {
+  color: var(--concierge-unstable);
+}
+
+.concierge-stat--success .concierge-stat__value {
+  color: var(--concierge-success);
+}
+
+.concierge-pinned,
+.concierge-joblist,
+.concierge-tours,
+.concierge-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concierge-pinned {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.concierge-note {
+  margin: 0.25rem 0 0 1.4rem;
+  color: var(--concierge-muted);
+  white-space: pre-line;
+}
+
+.concierge-job {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: 600;
+}
+
+.concierge-status {
+  display: inline-block;
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--concierge-other);
+}
+
+.concierge-status--failure {
+  background: var(--concierge-failure);
+}
+
+.concierge-status--unstable {
+  background: var(--concierge-unstable);
+}
+
+.concierge-status--success {
+  background: var(--concierge-success);
+}
+
+.concierge-tours {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.concierge-tour {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 1rem;
+  border: 1px solid var(--concierge-border);
+  border-radius: 8px;
+  background: var(--concierge-card);
+}
+
+.concierge-tour p {
+  margin: 0;
+}
+
+.concierge-tour .jenkins-button {
+  justify-self: start;
+}
+
+.concierge-path-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.concierge-path {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 1rem;
+  border: 1px solid var(--concierge-border);
+  border-radius: 8px;
+  background: var(--concierge-card);
+}
+
+.concierge-path > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.concierge-path > p {
+  margin: 0;
+}
+
+.concierge-path__count {
+  color: var(--concierge-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.concierge-steps {
+  display: grid;
+  gap: 0.75rem;
+  counter-reset: concierge-step;
+}
+
+.concierge-step {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--concierge-border);
+}
+
+.concierge-step__body {
+  min-width: 0;
+}
+
+.concierge-step__body p {
+  margin: 0.25rem 0;
+}
+
+.concierge-step__done {
+  display: inline-flex;
+  flex: none;
+  gap: 0.35rem;
+  align-items: flex-start;
+  color: var(--concierge-muted);
+  font-size: 0.85rem;
+}
+
+.concierge-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.concierge-joblist {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.concierge-pinned-row {
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------ tours */
+
+.concierge-tour-target {
+  position: relative;
+  z-index: 1000;
+  border-radius: 6px;
+  outline: 3px solid var(--accent-color, #1d6a86);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 9999px rgba(10, 15, 20, 0.35);
+}
+
+.concierge-tour-card {
+  position: fixed;
+  z-index: 1001;
+  display: grid;
+  gap: 0.5rem;
+  width: min(360px, calc(100vw - 24px));
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
+  border-radius: 10px;
+  background: var(--card-background, var(--background, #fff));
+  color: var(--text-color, #1f2328);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.concierge-tour-card--centered {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.concierge-tour-card__counter {
+  margin: 0;
+  color: var(--text-color-secondary, #5c6370);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.concierge-tour-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.concierge-tour-card__text {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.concierge-tour-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .concierge-tour-card {
+    transition: top 0.15s ease, left 0.15s ease;
+  }
+}

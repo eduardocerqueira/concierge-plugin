@@ -2,9 +2,9 @@
 
 Three phases, lowest risk first. Each phase ships on its own.
 
-## Phase 1: onboarding, no AI
+## Phase 1: onboarding, no AI (done)
 
-Works with no API key and sends nothing off the instance.
+Works with no API key and sends nothing off the instance. See [usage.md](usage.md).
 
 - **Welcome page.** How the instance is organised into folders and teams, the key jobs, current
   health, what is running, agents and labels, and the plugins that matter. Computed live for each
