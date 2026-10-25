@@ -45,7 +45,7 @@ final class Assistant {
     }
 
     /** The answer, and the tools used to reach it. */
-    record Answer(String text, List<String> toolsUsed) {}
+    record Answer(String text, List<String> toolsUsed, long inputTokens, long outputTokens) {}
 
     @NonNull
     Answer ask(@NonNull String question, @CheckForNull String page, @NonNull List<Llm.Turn> history)
@@ -61,12 +61,16 @@ final class Assistant {
                         : question + "\n\n(I am looking at this Jenkins page: /" + page + ")"));
         List<Llm.ToolSpec> specs = tools.specs();
         List<String> used = new ArrayList<>();
+        long inputTokens = 0;
+        long outputTokens = 0;
 
         for (int round = 0; round <= config.getMaxToolCalls(); round++) {
             // On the last round no tools are offered, so the model has to answer with what it has.
             boolean lastRound = round == config.getMaxToolCalls();
             Llm.Reply reply =
                     client.complete(systemPrompt(tools.actionsOffered()), turns, lastRound ? List.of() : specs);
+            inputTokens += reply.inputTokens();
+            outputTokens += reply.outputTokens();
             if (reply.toolCalls().isEmpty() && !lastRound) {
                 reply = textToolCalls(reply, specs);
             }
@@ -74,8 +78,11 @@ final class Assistant {
                 String text = reply.text() == null || reply.text().isBlank()
                         ? Messages.Assistant_noAnswer()
                         : reply.text().trim();
-                AUDIT.info(() -> "answer user=" + user + " tools=" + used + " chars=" + text.length());
-                return new Answer(text, used);
+                long in = inputTokens;
+                long out = outputTokens;
+                AUDIT.info(() -> "answer user=" + user + " tools=" + used + " chars=" + text.length() + " tokens=" + in
+                        + "/" + out);
+                return new Answer(text, used, in, out);
             }
             turns.add(new Llm.AssistantTurn(reply.text(), reply.toolCalls()));
             List<Llm.ToolResult> results = new ArrayList<>();
@@ -90,7 +97,7 @@ final class Assistant {
             turns.add(new Llm.ToolResultsTurn(results));
         }
         LOGGER.log(Level.FINE, "Assistant ran out of tool calls for {0}", user);
-        return new Answer(Messages.Assistant_noAnswer(), used);
+        return new Answer(Messages.Assistant_noAnswer(), used, inputTokens, outputTokens);
     }
 
     @NonNull

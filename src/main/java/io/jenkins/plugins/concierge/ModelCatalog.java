@@ -74,6 +74,26 @@ final class ModelCatalog {
         return models;
     }
 
+    /**
+     * A live price for a model, if a recent list from this provider reported one. Never fetches:
+     * answering a question must not trigger a model-list request.
+     */
+    @CheckForNull
+    static ModelPrice cachedLivePrice(@NonNull Provider provider, @NonNull String model) {
+        long now = clock.getAsLong();
+        for (Map.Entry<String, Cached> entry : CACHE.entrySet()) {
+            if (entry.getKey().startsWith(provider.name() + "|")
+                    && now - entry.getValue().at() < CACHE_MILLIS) {
+                for (Model m : entry.getValue().models()) {
+                    if (m.id().equals(model) && m.livePrice() != null) {
+                        return m.livePrice();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     static void clearCache() {
         CACHE.clear();
     }

@@ -38,8 +38,15 @@ final class Llm {
 
     record ToolResultsTurn(List<ToolResult> results) implements Turn {}
 
-    /** What the model said back: some text, tool calls, or both. */
-    record Reply(String text, List<ToolCall> toolCalls) {}
+    /**
+     * What the model said back: some text, tool calls, or both, and the tokens the provider says
+     * the request used (0 when it did not say).
+     */
+    record Reply(String text, List<ToolCall> toolCalls, long inputTokens, long outputTokens) {
+        Reply(String text, List<ToolCall> toolCalls) {
+            this(text, toolCalls, 0, 0);
+        }
+    }
 
     /** A provider answered with an error, or something that was not a valid answer. */
     static final class ProviderException extends IOException {

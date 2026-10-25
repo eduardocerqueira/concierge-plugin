@@ -236,7 +236,25 @@
       return card;
     }
 
-    function addMessage(role, text, tools, proposals) {
+    function usageLine(usage) {
+      if (!usage || (!usage.inputTokens && !usage.outputTokens)) {
+        return null;
+      }
+      var parts = [
+        Number(usage.inputTokens).toLocaleString() + " in / " + Number(usage.outputTokens).toLocaleString() + " out tokens"
+      ];
+      if (usage.ownKey) {
+        parts.push("your key");
+      } else if (usage.cost !== null && usage.cost !== undefined) {
+        var cost = Number(usage.cost);
+        parts.push(cost > 0 && cost < 0.01 ? "under $0.01" : "about $" + cost.toFixed(2));
+      } else {
+        parts.push("price unknown");
+      }
+      return el("p", "concierge-chat__usage", parts.join(" \u00b7 "));
+    }
+
+    function addMessage(role, text, tools, proposals, usage) {
       empty.hidden = true;
       var message = el("div", "concierge-chat__message concierge-chat__message--" + role);
       if (role === "assistant") {
@@ -249,6 +267,10 @@
             return tools.indexOf(name) === i;
           });
           message.appendChild(el("p", "concierge-chat__tools", "Looked at: " + unique.join(", ").replace(/_/g, " ")));
+        }
+        var line = usageLine(usage);
+        if (line) {
+          message.appendChild(line);
         }
       } else if (role === "error") {
         message.textContent = text;
@@ -274,7 +296,7 @@
       request("ask", { question: question, page: currentPage() })
         .then(function (body) {
           pending.remove();
-          addMessage("assistant", body.answer, body.tools, body.proposals);
+          addMessage("assistant", body.answer, body.tools, body.proposals, body.usage);
         })
         .catch(function (error) {
           pending.remove();

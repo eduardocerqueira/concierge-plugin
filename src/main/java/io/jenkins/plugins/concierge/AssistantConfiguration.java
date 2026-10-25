@@ -56,6 +56,7 @@ public class AssistantConfiguration extends GlobalConfiguration {
     private String actionJobs;
     private String customModel;
     private String modelPrices;
+    private String monthlyBudget;
 
     public AssistantConfiguration() {
         load();
@@ -212,7 +213,53 @@ public class AssistantConfiguration extends GlobalConfiguration {
     /** What the configured model costs, or null when no source knows. */
     @CheckForNull
     ModelPrice getPrice() {
-        return ModelPrice.find(getProvider(), getModel(), null, ModelPrice.parseOverrides(modelPrices, null));
+        return ModelPrice.find(
+                getProvider(),
+                getModel(),
+                ModelCatalog.cachedLivePrice(getProvider(), getModel()),
+                ModelPrice.parseOverrides(modelPrices, null));
+    }
+
+    /** The monthly spending cap in US dollars as typed, or empty for none. */
+    @NonNull
+    public String getMonthlyBudget() {
+        return monthlyBudget == null ? "" : monthlyBudget;
+    }
+
+    @DataBoundSetter
+    public void setMonthlyBudget(String monthlyBudget) {
+        this.monthlyBudget = monthlyBudget == null || monthlyBudget.isBlank() ? null : monthlyBudget.trim();
+    }
+
+    /** The monthly cap, or null for none (or a value that does not parse, which the form reports). */
+    @CheckForNull
+    java.math.BigDecimal getBudget() {
+        if (monthlyBudget == null) {
+            return null;
+        }
+        try {
+            java.math.BigDecimal value =
+                    new java.math.BigDecimal(monthlyBudget.replace("$", "").trim());
+            return value.signum() > 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    @POST
+    public FormValidation doCheckMonthlyBudget(@QueryParameter String value) {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        if (value == null || value.isBlank()) {
+            return FormValidation.ok();
+        }
+        try {
+            if (new java.math.BigDecimal(value.replace("$", "").trim()).signum() > 0) {
+                return FormValidation.ok();
+            }
+        } catch (NumberFormatException e) {
+            // Fall through to the error.
+        }
+        return FormValidation.error(Messages.Usage_badBudget());
     }
 
     @DataBoundSetter

@@ -60,6 +60,16 @@ public class ConciergeAction implements RootAction, StaplerProxy {
         return new AssistantEndpoint();
     }
 
+    /** Assistant usage and cost, at {@code /concierge/usage}. Administrators only. */
+    @NonNull
+    public UsagePage getUsage() {
+        return new UsagePage();
+    }
+
+    public boolean isAdministrator() {
+        return Jenkins.get().hasPermission(Jenkins.ADMINISTER);
+    }
+
     public boolean isAssistantAvailable() {
         return AssistantEndpoint.isAvailable();
     }

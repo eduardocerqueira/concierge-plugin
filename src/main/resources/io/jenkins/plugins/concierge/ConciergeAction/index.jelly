@@ -25,9 +25,14 @@
               </j:otherwise>
             </j:choose>
           </div>
-          <j:if test="${it.canManageTours}">
-            <a class="jenkins-button" href="manage">${%Edit welcome and start here}</a>
-          </j:if>
+          <div class="concierge-hero__actions">
+            <j:if test="${it.canManageTours}">
+              <a class="jenkins-button" href="manage">${%Edit welcome and start here}</a>
+            </j:if>
+            <j:if test="${it.administrator}">
+              <a class="jenkins-button" href="usage">${%Assistant usage}</a>
+            </j:if>
+          </div>
         </header>
 
         <section class="concierge-section" aria-labelledby="concierge-overview-title">
