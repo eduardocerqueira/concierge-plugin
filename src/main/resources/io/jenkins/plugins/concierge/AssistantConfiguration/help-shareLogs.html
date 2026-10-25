@@ -10,6 +10,7 @@
     <li><strong>Source control</strong>: repository types and addresses, and commit authors and
       messages.</li>
   </ul>
-  <p>Every question and tool call is logged to the <code>io.jenkins.plugins.concierge.audit</code>
-  logger. Add a log recorder for it to keep an audit trail.</p>
+  <p>Who asked, and which tools ran, is logged to the <code>io.jenkins.plugins.concierge.audit</code>
+  logger. The question text and tool arguments are logged at <code>FINE</code>, so they stay out of the
+  system log; add a log recorder for that logger at <code>FINE</code> to keep a full audit trail.</p>
 </div>

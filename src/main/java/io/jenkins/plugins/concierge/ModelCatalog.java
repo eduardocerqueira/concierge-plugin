@@ -165,9 +165,6 @@ final class ModelCatalog {
 
     private static Map<String, Object> get(Provider provider, String url, @CheckForNull String apiKey)
             throws IOException, InterruptedException {
-        HttpClient http = ProxyConfiguration.newHttpClientBuilder()
-                .connectTimeout(Duration.ofSeconds(15))
-                .build();
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
                 .header("Accept", "application/json")
@@ -180,8 +177,12 @@ final class ModelCatalog {
         } else if (apiKey != null) {
             request.header("Authorization", "Bearer " + apiKey);
         }
-        HttpResponse<String> response =
-                http.send(request.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response;
+        try (HttpClient http = ProxyConfiguration.newHttpClientBuilder()
+                .connectTimeout(Duration.ofSeconds(15))
+                .build()) {
+            response = http.send(request.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        }
         if (response.statusCode() / 100 != 2) {
             throw new Llm.ProviderException(response.statusCode(), HttpLlmClient.errorMessage(response.body()));
         }

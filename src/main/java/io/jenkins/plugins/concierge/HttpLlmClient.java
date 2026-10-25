@@ -47,6 +47,11 @@ final class HttpLlmClient implements Llm.Client {
                 .build();
     }
 
+    @Override
+    public void close() {
+        http.close();
+    }
+
     /** The endpoint requests are sent to. */
     @NonNull
     String endpoint() {

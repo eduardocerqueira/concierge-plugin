@@ -4,7 +4,9 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +35,8 @@ final class Redactor {
             new Rule(
                     Pattern.compile("(?i)\\b([a-z][a-z0-9+.-]{1,20}://)[^/\\s:@]{1,200}:[^/\\s@]{1,200}@"),
                     "$1" + MASK + "@"),
+            // A token alone as the user part: https://ghp_abc...@github.com/org/repo
+            new Rule(Pattern.compile("(?i)\\b([a-z][a-z0-9+.-]{1,20}://)[A-Za-z0-9_-]{20,200}@"), "$1" + MASK + "@"),
             // Authorization headers.
             new Rule(Pattern.compile("(?i)\\b(bearer|basic|token)\\s+[A-Za-z0-9._~+/=-]{8,}"), "$1 " + MASK),
             // Well-known token formats.
@@ -88,5 +92,27 @@ final class Redactor {
             }
         }
         return out;
+    }
+
+    /** Redacts every string in a value about to go through {@link Json#write}: map values and list items, at any depth. */
+    Object redactValues(@CheckForNull Object value) {
+        if (value instanceof String text) {
+            return redact(text);
+        }
+        if (value instanceof Map<?, ?> map) {
+            Map<Object, Object> out = new LinkedHashMap<>();
+            map.forEach((key, item) -> out.put(key, redactValues(item)));
+            return out;
+        }
+        if (value instanceof Iterable<?> items) {
+            List<Object> out = new ArrayList<>();
+            items.forEach(item -> out.add(redactValues(item)));
+            return out;
+        }
+        if (value == null || value instanceof Boolean || value instanceof Number) {
+            return value;
+        }
+        // Json writes anything else as its string form, so redact that.
+        return redact(value.toString());
     }
 }

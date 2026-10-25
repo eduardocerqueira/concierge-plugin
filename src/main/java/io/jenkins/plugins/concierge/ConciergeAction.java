@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -17,6 +18,7 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerProxy;
 import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.verb.GET;
 import org.kohsuke.stapler.verb.POST;
 
 /**
@@ -125,12 +127,13 @@ public class ConciergeAction implements RootAction, StaplerProxy {
     }
 
     /** The steps of one tour, for {@code tour.js}. Read-only, so GET is fine. */
+    @GET
     public HttpResponse doTour(@QueryParameter String id) {
-        JSONObject tour = TourCatalog.steps(id, Examples.forCurrentUser(), getStartHere());
+        Map<String, Object> tour = TourCatalog.steps(id, Examples.forCurrentUser(), getStartHere());
         if (tour == null) {
-            return HttpResponses.error(404, "No such tour.");
+            return HttpResponses.error(404, Messages.Tour_notFound());
         }
-        return hudson.util.HttpResponses.okJSON(tour);
+        return AssistantEndpoint.json(200, Map.of("status", "ok", "data", tour));
     }
 
     /** Marks a learning-path step as done or not done for the current user. */
@@ -139,10 +142,10 @@ public class ConciergeAction implements RootAction, StaplerProxy {
         Jenkins.get().checkPermission(ConciergePermissions.USE);
         User user = User.current();
         if (user == null) {
-            return HttpResponses.error(403, "Sign in to keep track of your progress.");
+            return HttpResponses.error(403, Messages.Progress_signIn());
         }
         if (!LearningPath.isKnownStep(step)) {
-            return HttpResponses.error(400, "Unknown step.");
+            return HttpResponses.error(400, Messages.Progress_unknownStep());
         }
         ProgressProperty.mark(user, step, done);
         JSONObject result = new JSONObject();

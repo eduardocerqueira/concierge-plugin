@@ -33,3 +33,9 @@ mvn hpi:run
 ```
 
 This starts Jenkins at <http://localhost:8080/jenkins/> with the plugin installed.
+
+## Installing a build into your own Jenkins
+
+Upload `target/concierge.hpi` under **Manage Jenkins → Plugins → Advanced settings → Deploy
+Plugin**. Install the **Credentials** and **Plain Credentials** plugins first; Concierge depends on
+them.

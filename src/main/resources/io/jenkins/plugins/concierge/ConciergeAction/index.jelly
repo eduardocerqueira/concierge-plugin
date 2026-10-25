@@ -137,10 +137,10 @@
                         <p>${step.text}</p>
                         <j:choose>
                           <j:when test="${step.href != null}">
-                            <a href="${rootURL}/${step.href}">${%Show me}</a>
+                            <p><a href="${rootURL}/${step.href}">${%Show me}</a></p>
                           </j:when>
                           <j:otherwise>
-                            <span class="concierge-muted">${%Nothing to show for this on this instance yet.}</span>
+                            <p class="concierge-muted">${%Nothing to show for this on this instance yet.}</p>
                           </j:otherwise>
                         </j:choose>
                       </div>
@@ -203,7 +203,7 @@
               <h2 id="concierge-folders-title">${%How it is organised}</h2>
               <ul class="concierge-joblist">
                 <j:forEach var="folder" items="${o.folders}">
-                  <li><a href="${rootURL}/${folder.url}">${folder.name}</a> <span class="concierge-muted">${folder.jobCount}</span></li>
+                  <li><a href="${rootURL}/${folder.url}">${folder.name}</a><span class="concierge-muted">&#160;${%jobs(folder.jobCount)}</span></li>
                 </j:forEach>
               </ul>
             </section>

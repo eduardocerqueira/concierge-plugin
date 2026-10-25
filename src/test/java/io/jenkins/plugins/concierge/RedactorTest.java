@@ -33,6 +33,14 @@ class RedactorTest {
     }
 
     @Test
+    void removesATokenUsedAsTheUserInAUrl() {
+        String out = redactor.redact("cloning https://abcdefghijklmnopqrstuvwxyz0123@git.example.com/org/repo");
+        assertTrue(out.contains("https://" + Redactor.MASK + "@git.example.com/org/repo"), out);
+        // An ordinary user name is left alone.
+        assertTrue(redactor.redact("ssh://git@github.com/org/repo").contains("git@github.com"));
+    }
+
+    @Test
     void keepsTheKeyNameButHidesTheValue() {
         String out = redactor.redact("DB_PASSWORD=hunter2 and api_key: \"abc def\" client_secret='s3cr3t'");
         assertTrue(out.contains("DB_PASSWORD=" + Redactor.MASK), out);

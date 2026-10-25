@@ -4,3 +4,5 @@ credentials
 plain-credentials
 cloudbees-folder
 matrix-auth
+# So the demo can also be checked in Jenkins' dark theme: user menu → Appearance.
+dark-theme

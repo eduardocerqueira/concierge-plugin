@@ -18,6 +18,7 @@ import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerProxy;
 import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.verb.GET;
 import org.kohsuke.stapler.verb.POST;
 
 /**
@@ -88,6 +89,7 @@ public class AssistantEndpoint implements StaplerProxy {
     }
 
     /** The conversation so far, for the chat panel when it opens. Read-only, so GET is fine. */
+    @GET
     public HttpResponse doHistory(StaplerRequest2 req) {
         return json(
                 200,
@@ -167,15 +169,8 @@ public class AssistantEndpoint implements StaplerProxy {
             result.put("askedAt", askedAt);
             result.put("at", System.currentTimeMillis());
             result.put("tools", answer.toolsUsed());
-            ModelPrice price = config.getPrice();
-            java.math.BigDecimal cost = price == null ? null : price.cost(answer.inputTokens(), answer.outputTokens());
-            UsageLedger.get().record(userId, answer.inputTokens(), answer.outputTokens(), cost, userKey != null);
-            Map<String, Object> usage = new LinkedHashMap<>();
-            usage.put("inputTokens", answer.inputTokens());
-            usage.put("outputTokens", answer.outputTokens());
-            usage.put("cost", cost == null ? null : cost.toPlainString());
-            usage.put("ownKey", userKey != null);
-            result.put("usage", usage);
+            // Counted for the usage page and the budget; not shown with the answer.
+            recordUsage(config, userId, answer.inputTokens(), answer.outputTokens(), userKey != null, true);
             List<Object> proposed = new ArrayList<>();
             if (proposals != null) {
                 proposals.takeMadeNow().forEach(p -> proposed.add(p.toJson()));
@@ -184,6 +179,7 @@ public class AssistantEndpoint implements StaplerProxy {
             result.put("proposals", proposed);
             return json(200, result);
         } catch (Llm.ProviderException e) {
+            recordUsage(config, userId, assistant.inputTokens(), assistant.outputTokens(), userKey != null, false);
             LOGGER.log(Level.WARNING, "AI provider error {0}: {1}", new Object[] {e.getStatus(), e.getMessage()});
             Assistant.AUDIT.info(() -> "provider-error user=" + userId + " status=" + e.getStatus());
             return error(502, Messages.Assistant_providerError(e.getStatus()));
@@ -191,11 +187,32 @@ public class AssistantEndpoint implements StaplerProxy {
             Thread.currentThread().interrupt();
             return error(503, Messages.Assistant_providerError(0));
         } catch (IOException e) {
+            recordUsage(config, userId, assistant.inputTokens(), assistant.outputTokens(), userKey != null, false);
             LOGGER.log(
                     Level.WARNING,
                     "Could not reach the AI provider: {0}",
                     e.getClass().getSimpleName());
             return error(502, Messages.Assistant_providerError(0));
+        } finally {
+            client.close();
+        }
+    }
+
+    /**
+     * Counts what a question spent, including the rounds before a provider error, so a question that
+     * fails part-way still counts against the budget.
+     */
+    private static void recordUsage(
+            AssistantConfiguration config,
+            String userId,
+            long inputTokens,
+            long outputTokens,
+            boolean ownKey,
+            boolean answered) {
+        ModelPrice price = config.getPrice();
+        java.math.BigDecimal cost = price == null ? null : price.cost(inputTokens, outputTokens);
+        if (answered || inputTokens > 0 || outputTokens > 0) {
+            UsageLedger.get().record(userId, inputTokens, outputTokens, cost, ownKey);
         }
     }
 
@@ -293,7 +310,7 @@ public class AssistantEndpoint implements StaplerProxy {
         return json(status, body);
     }
 
-    private static HttpResponse json(int status, Map<String, ?> body) {
+    static HttpResponse json(int status, Map<String, ?> body) {
         String text = Json.write(body);
         return new HttpResponse() {
             @Override

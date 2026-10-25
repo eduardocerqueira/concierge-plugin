@@ -3,9 +3,9 @@ package io.jenkins.plugins.concierge;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
+import java.util.Map;
 
 /**
  * The guided tours, built for the current user.
@@ -42,11 +42,14 @@ final class TourCatalog {
         return tours;
     }
 
-    /** The steps of one tour as JSON, or null if there is no such tour for this user. */
+    /**
+     * The steps of one tour, for {@link Json#write}, or null if there is no such tour for this user.
+     * Not json-lib, which would turn a curated note such as "[x] done" or "null" into something else.
+     */
     @CheckForNull
-    static JSONObject steps(
+    static Map<String, Object> steps(
             @CheckForNull String id, @NonNull Examples examples, @NonNull List<StartHereEntry> startHere) {
-        JSONArray steps = new JSONArray();
+        List<Object> steps = new ArrayList<>();
         if (DASHBOARD.equals(id)) {
             steps.add(step(
                     "",
@@ -122,18 +125,18 @@ final class TourCatalog {
         } else {
             return null;
         }
-        JSONObject tour = new JSONObject();
-        tour.element("id", id);
-        tour.element("steps", steps);
+        Map<String, Object> tour = new LinkedHashMap<>();
+        tour.put("id", id);
+        tour.put("steps", steps);
         return tour;
     }
 
-    private static JSONObject step(String path, String selector, String title, String text) {
-        JSONObject step = new JSONObject();
-        step.element("path", path);
-        step.element("selector", selector);
-        step.element("title", title);
-        step.element("text", text);
+    private static Map<String, Object> step(String path, String selector, String title, String text) {
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("path", path);
+        step.put("selector", selector);
+        step.put("title", title);
+        step.put("text", text);
         return step;
     }
 

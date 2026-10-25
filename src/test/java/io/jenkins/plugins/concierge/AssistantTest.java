@@ -48,6 +48,7 @@ import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 class AssistantTest {
 
     static final String API_KEY = "sk-ant-test-0123456789abcdefghij";
+    static final String GITHUB_TOKEN = "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789ab";
 
     private JenkinsRule r;
 
@@ -83,6 +84,11 @@ class AssistantTest {
                     hudson.model.BuildListener listener) {
                 listener.getLogger().println("Connecting with DB_PASSWORD=hunter2");
                 listener.getLogger().println("Using key " + API_KEY);
+                // Secrets at the start of a line and quoted values, which JSON escaping used to hide
+                // from the redactor.
+                listener.getLogger().println(GITHUB_TOKEN);
+                listener.getLogger().println("AKIAIOSFODNN7EXAMPLE");
+                listener.getLogger().println("deploy_password=\"correct horse\"");
                 listener.getLogger().println("ERROR: connection refused");
                 return false;
             }
@@ -138,6 +144,7 @@ class AssistantTest {
     void tearDown() {
         AssistantEndpoint.clientFactory = HttpLlmClient::new;
         Assistant.AUDIT.removeHandler(auditHandler);
+        Assistant.AUDIT.setLevel(null);
     }
 
     private static Function<List<Llm.Turn>, Llm.Reply> callTool(String name, Map<String, Object> args) {
@@ -210,6 +217,9 @@ class AssistantTest {
         assertTrue(sent.contains("connection refused"), sent);
         assertFalse(sent.contains("hunter2"), "a password reached the model");
         assertFalse(sent.contains(API_KEY), "the API key reached the model");
+        assertFalse(sent.contains(GITHUB_TOKEN), "a token at the start of a line reached the model");
+        assertFalse(sent.contains("AKIAIOSFODNN7EXAMPLE"), "an access key at the start of a line reached the model");
+        assertFalse(sent.contains("correct horse"), "a quoted password reached the model");
         assertTrue(sent.contains(Redactor.MASK));
     }
 
@@ -346,6 +356,15 @@ class AssistantTest {
         assertTrue(log.contains("name=get_build_log"), log);
         assertFalse(log.contains(API_KEY), "the API key reached the audit log");
         assertFalse(log.contains("hunter2"), "tool results must not be audited");
+        // The system log is readable with Overall/SystemRead, so what was asked stays out of it...
+        assertFalse(log.contains("Why did web-deploy fail?"), log);
+
+        // ...and is there for an administrator who adds a log recorder at FINE.
+        audit.clear();
+        Assistant.AUDIT.setLevel(java.util.logging.Level.FINE);
+        script.add(turns -> new Llm.Reply("ok", List.of()));
+        ask(r.createWebClient().login("alice"), "And the one before?");
+        assertTrue(String.join("\n", audit).contains("text=And the one before?"), String.join("\n", audit));
     }
 
     @Test

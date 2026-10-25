@@ -1,7 +1,7 @@
 <?jelly escape-by-default='true'?>
 <!--
   The assistant as a full page. assistant.js finds #concierge-chat-page and runs the chat inside it
-  instead of opening the floating panel.
+  instead of opening the floating window.
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
   <l:layout title="${%Concierge assistant}" type="one-column">

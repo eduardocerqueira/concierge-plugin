@@ -12,7 +12,6 @@ import hudson.model.Job;
 import hudson.model.Label;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParametersDefinitionProperty;
-import hudson.model.PasswordParameterDefinition;
 import hudson.model.Queue;
 import hudson.model.Run;
 import hudson.model.SimpleParameterDefinition;
@@ -212,7 +211,9 @@ final class AssistantTools {
             result = Map.of("error", "The tool failed: " + e.getClass().getSimpleName());
             error = true;
         }
-        String text = redactor.redact(Json.write(result));
+        // Redact the values themselves, not the JSON: escaping turns a line break into "\\n", which
+        // hides a token at the start of the next line from the redactor's word boundaries.
+        String text = Json.write(redactor.redactValues(result));
         if (text.length() > RESULT_CHAR_LIMIT) {
             text = text.substring(0, RESULT_CHAR_LIMIT) + "\n[truncated]";
         }
@@ -429,11 +430,12 @@ final class AssistantTools {
                 Map<String, Object> parameter = new LinkedHashMap<>();
                 parameter.put("name", definition.getName());
                 parameter.put("type", definition.getClass().getSimpleName());
-                // Password defaults are secrets and never leave; other defaults are configuration.
+                // Password and credentials defaults never leave; other defaults are configuration.
                 hudson.model.ParameterValue defaultValue = definition.getDefaultParameterValue();
                 if (definition instanceof SimpleParameterDefinition
-                        && !(definition instanceof PasswordParameterDefinition)
-                        && defaultValue != null) {
+                        && !BuildProposals.isSecret(definition)
+                        && defaultValue != null
+                        && !defaultValue.isSensitive()) {
                     Object value = defaultValue.getValue();
                     parameter.put("default", value == null ? null : String.valueOf(value));
                 }
@@ -539,7 +541,23 @@ final class AssistantTools {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("proposed", true);
         out.put("job", proposal.job());
-        out.put("parameters", proposal.parameters());
+        // The model gets back what it asked for. The job's defaults are its configuration, which only
+        // leaves when an administrator shares configuration and the person may read it; the card in
+        // the browser shows them either way.
+        Job<?, ?> target = Jenkins.get().getItemByFullName(proposal.job(), Job.class);
+        boolean shareDefaults =
+                config.isShareConfiguration() && target != null && target.hasPermission(Item.EXTENDED_READ);
+        if (shareDefaults) {
+            out.put("parameters", proposal.parameters());
+        } else {
+            out.put("parameters", proposal.requested());
+            List<String> others = proposal.parameters().keySet().stream()
+                    .filter(name -> !proposal.requested().containsKey(name))
+                    .toList();
+            if (!others.isEmpty()) {
+                out.put("otherParametersAtTheirDefaults", others);
+            }
+        }
         out.put(
                 "note",
                 "Nothing has run. The person now sees a confirmation card and decides. Tell them to check"

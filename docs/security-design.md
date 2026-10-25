@@ -19,6 +19,8 @@ first, in an issue.
 tool returned pipeline scripts to users who could only read the job.
 
 - Every lookup and action runs with the requesting user's `Authentication`. Never `ACL.as2(ACL.SYSTEM2)`.
+  The one exception is reading the provider API key an administrator chose, a global credential,
+  which the Credentials plugin only looks up as `SYSTEM2`. Nothing found that way reaches the user.
 - Lists are filtered by `Item.READ`.
 - Job configuration and pipeline scripts need `Item.EXTENDED_READ`.
 - System-wide information needs `Overall/SystemRead` or `Administer`.
@@ -79,15 +81,19 @@ by other people, and the model reads them.
 
 **Risk: cross-site scripting.**
 
-- Model output and curated tour text are shown as text or sanitised Markdown. Never `innerHTML`.
+- Model output and curated tour text are shown as text, or as a small Markdown subset (paragraphs,
+  lists, bold, inline code and code blocks) built from DOM nodes. Links and images are deliberately
+  unsupported, so an answer can neither load a remote resource nor carry a `javascript:` URL. Never
+  `innerHTML`.
 - No inline JavaScript in Jelly. State goes through `data-` attributes, so pages work under the
   Jenkins Content-Security-Policy.
 - Any tour library is bundled with the plugin, never loaded from a CDN.
 
 ## 7. Audit everything the assistant does
 
-- Every prompt, tool call, action, user and provider is written to a log recorder, with optional
-  Audit Log plugin integration.
+- Every prompt, tool call, action, user and provider is written to a dedicated logger. Who asked and
+  which tools ran are logged at `INFO`; prompt text and tool arguments at `FINE`, so they reach an
+  administrator's log recorder but not the system log, which Overall/SystemRead can read.
 - Chat history has a retention limit, because it contains job data.
 
 ## 8. Few dependencies

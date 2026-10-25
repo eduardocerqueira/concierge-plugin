@@ -69,6 +69,9 @@
     return button;
   }
 
+  /** The clipboard API only exists on HTTPS (or localhost), so plain-HTTP Jenkins gets no copy buttons. */
+  var CAN_COPY = !!(navigator.clipboard && navigator.clipboard.writeText);
+
   function copyText(text, button) {
     function confirmCopied() {
       button.replaceChildren(icon("check"));
@@ -78,9 +81,7 @@
         button.setAttribute("aria-label", "Copy");
       }, 1500);
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(confirmCopied, function () {});
-    }
+    navigator.clipboard.writeText(text).then(confirmCopied, function () {});
   }
 
   function read(kind, key) {
@@ -183,11 +184,13 @@
     var block = el("div", "concierge-code");
     var bar = el("div", "concierge-code__bar");
     bar.appendChild(el("span", "concierge-code__lang", language || "text"));
-    var copy = iconButton("copy", "Copy", "concierge-code__copy");
-    copy.addEventListener("click", function () {
-      copyText(code, copy);
-    });
-    bar.appendChild(copy);
+    if (CAN_COPY) {
+      var copy = iconButton("copy", "Copy", "concierge-code__copy");
+      copy.addEventListener("click", function () {
+        copyText(code, copy);
+      });
+      bar.appendChild(copy);
+    }
     var pre = el("pre", "concierge-code__body");
     pre.appendChild(el("code", null, code));
     block.appendChild(bar);
@@ -227,8 +230,14 @@
           return {};
         })
         .then(function (body) {
+          if (response.status === 403 && !body.message) {
+            throw new Error("Jenkins refused the request. Your session may have expired: reload the page and try again.");
+          }
           if (!response.ok) {
             throw new Error(body.message || "The assistant could not answer (HTTP " + response.status + ").");
+          }
+          if (!body || body.status !== "ok") {
+            throw new Error("Jenkins sent an unexpected reply. Reload the page and try again.");
           }
           return body;
         });
@@ -250,6 +259,7 @@
     var userName = "";
     var lastDay = null;
     var busy = false;
+    var loading = Promise.resolve();
 
     var log = el("div", "concierge-chat__log");
     log.setAttribute("role", "log");
@@ -283,6 +293,9 @@
       var button = el("button", "concierge-chat__example", example);
       button.type = "button";
       button.addEventListener("click", function () {
+        if (busy) {
+          return;
+        }
         input.value = example;
         resize();
         send();
@@ -421,30 +434,12 @@
       return card;
     }
 
-    function usageText(usage) {
-      if (!usage || (!usage.inputTokens && !usage.outputTokens)) {
-        return null;
-      }
-      var parts = [
-        Number(usage.inputTokens).toLocaleString() + " in / " + Number(usage.outputTokens).toLocaleString() + " out tokens",
-      ];
-      if (usage.ownKey) {
-        parts.push("your key");
-      } else if (usage.cost !== null && usage.cost !== undefined) {
-        var cost = Number(usage.cost);
-        parts.push(cost > 0 && cost < 0.01 ? "under $0.01" : "about $" + cost.toFixed(2));
-      } else {
-        parts.push("price unknown");
-      }
-      return parts.join(" · ");
-    }
-
     function addUser(text, at) {
       messageRow("user", at).bubble.textContent = text;
       scrollDown();
     }
 
-    function addAssistant(text, at, tools, proposals, usage) {
+    function addAssistant(text, at, tools, proposals) {
       var parts = messageRow("assistant", at);
       renderRich(text, parts.bubble);
       (proposals || []).forEach(function (proposal) {
@@ -463,15 +458,13 @@
           });
         footer.appendChild(chips);
       }
-      var usageLine = usageText(usage);
-      if (usageLine) {
-        footer.appendChild(el("span", "concierge-msg__usage", usageLine));
+      if (CAN_COPY) {
+        var copy = iconButton("copy", "Copy", "concierge-msg__copy");
+        copy.addEventListener("click", function () {
+          copyText(text, copy);
+        });
+        footer.appendChild(copy);
       }
-      var copy = iconButton("copy", "Copy", "concierge-msg__copy");
-      copy.addEventListener("click", function () {
-        copyText(text, copy);
-      });
-      footer.appendChild(copy);
       parts.column.appendChild(footer);
       scrollDown();
     }
@@ -480,7 +473,6 @@
       var parts = messageRow("assistant", Date.now());
       parts.row.classList.add("concierge-msg--error");
       parts.bubble.textContent = text;
-      parts.bubble.setAttribute("role", "alert");
       scrollDown();
     }
 
@@ -509,16 +501,27 @@
       busy = true;
       input.value = "";
       resize();
-      addUser(question, Date.now());
-      var indicator = typing();
-      request("ask", { question: question, page: currentPage() })
+      var indicator;
+      // A question sent while the history is still loading goes after it, under the person's name.
+      loading
+        .catch(function () {})
+        .then(function () {
+          addUser(question, Date.now());
+          indicator = typing();
+          return request("ask", { question: question, page: currentPage() });
+        })
         .then(function (body) {
           indicator.remove();
-          addAssistant(body.answer, body.at || Date.now(), body.tools, body.proposals, body.usage);
+          addAssistant(String(body.answer || ""), body.at || Date.now(), body.tools, body.proposals);
         })
         .catch(function (error) {
-          indicator.remove();
+          if (indicator) {
+            indicator.remove();
+          }
           addError(error.message);
+          if (!input.value) {
+            input.value = question;
+          }
         })
         .then(function () {
           busy = false;
@@ -540,7 +543,9 @@
     });
 
     this.load = function () {
-      return request("history").then(function (body) {
+      // aria-busy keeps screen readers from reading the restored conversation out on every page.
+      log.setAttribute("aria-busy", "true");
+      loading = request("history").then(function (body) {
         userName = body.user || "";
         (body.turns || []).forEach(function (turn) {
           if (turn.role === "user") {
@@ -552,11 +557,20 @@
         if (body.provider) {
           note.textContent = "Answers come from " + body.provider + ". " + CAUTION;
         }
+        log.setAttribute("aria-busy", "false");
         return body;
       });
+      loading.catch(function (error) {
+        log.setAttribute("aria-busy", "false");
+        addError(error.message);
+      });
+      return loading;
     };
 
     this.reset = function () {
+      if (busy) {
+        return Promise.resolve();
+      }
       return request("reset", {}).then(function () {
         Array.prototype.slice.call(log.querySelectorAll(".concierge-msg, .concierge-chat__day")).forEach(function (m) {
           m.remove();
@@ -580,13 +594,14 @@
   var bottomEdge = 88;
 
   function availableHeight() {
-    return Math.max(MIN_HEIGHT, window.innerHeight - bottomEdge - 16);
+    return Math.max(160, window.innerHeight - bottomEdge - 16);
   }
 
+  /** At least the minimum size, but never more than the screen has room for. */
   function clampSize(width, height) {
     return {
-      width: Math.round(Math.max(MIN_WIDTH, Math.min(width, window.innerWidth - 32))),
-      height: Math.round(Math.max(MIN_HEIGHT, Math.min(height, availableHeight()))),
+      width: Math.round(Math.min(Math.max(MIN_WIDTH, width), window.innerWidth - 32)),
+      height: Math.round(Math.min(Math.max(MIN_HEIGHT, height), availableHeight())),
     };
   }
 
@@ -678,21 +693,29 @@
         win.style.width = shown.width + "px";
         win.style.height = shown.height + "px";
       }
-      expand.replaceChildren(icon(expanded ? "collapse" : "expand"));
-      expand.setAttribute("aria-label", expanded ? "Restore size" : "Expand");
-      expand.title = expanded ? "Restore size" : "Expand";
+      if (expand.getAttribute("data-expanded") !== String(expanded)) {
+        expand.setAttribute("data-expanded", String(expanded));
+        expand.replaceChildren(icon(expanded ? "collapse" : "expand"));
+        expand.setAttribute("aria-label", expanded ? "Restore size" : "Expand");
+        expand.title = expanded ? "Restore size" : "Expand";
+      }
     }
 
-    function setSize(width, height) {
+    function setSize(width, height, save) {
       expanded = false;
       size = clampSize(width, height);
       applySize();
-      write("localStorage", SIZE_KEY, JSON.stringify(size));
+      if (save !== false) {
+        write("localStorage", SIZE_KEY, JSON.stringify(size));
+      }
     }
 
     // Dragging the top-left corner grows the window up and to the left, since it is anchored to
     // the bottom-right corner of the screen.
     handle.addEventListener("pointerdown", function (event) {
+      if (event.button !== 0) {
+        return;
+      }
       event.preventDefault();
       try {
         handle.setPointerCapture(event.pointerId);
@@ -703,17 +726,20 @@
       var start = { x: event.clientX, y: event.clientY, width: win.offsetWidth, height: win.offsetHeight };
       win.classList.add("concierge-window--resizing");
       function move(e) {
-        setSize(start.width + (start.x - e.clientX), start.height + (start.y - e.clientY));
+        setSize(start.width + (start.x - e.clientX), start.height + (start.y - e.clientY), false);
       }
       function up() {
         win.classList.remove("concierge-window--resizing");
         handle.removeEventListener("pointermove", move);
         handle.removeEventListener("pointerup", up);
         handle.removeEventListener("pointercancel", up);
+        handle.removeEventListener("lostpointercapture", up);
+        write("localStorage", SIZE_KEY, JSON.stringify(size));
       }
       handle.addEventListener("pointermove", move);
       handle.addEventListener("pointerup", up);
       handle.addEventListener("pointercancel", up);
+      handle.addEventListener("lostpointercapture", up);
     });
     handle.addEventListener("keydown", function (event) {
       var step = event.shiftKey ? 80 : 20;
@@ -726,7 +752,7 @@
 
     // Keep the launcher, and the window above it, clear of Jenkins' page footer (version, REST
     // API) when the footer scrolls into view.
-    var footer = document.querySelector("footer.page-footer, footer");
+    var footer = document.querySelector("footer.page-footer") || document.querySelector("footer");
     var scheduled = false;
     function place() {
       scheduled = false;
@@ -760,7 +786,7 @@
       }
     });
 
-    function open() {
+    function open(takeFocus) {
       win.hidden = false;
       launcher.classList.add("concierge-launcher--open");
       launcher.setAttribute("aria-expanded", "true");
@@ -781,7 +807,9 @@
             loaded = false;
           });
       }
-      chat.focus();
+      if (takeFocus !== false) {
+        chat.focus();
+      }
     }
 
     function hide() {
@@ -795,7 +823,7 @@
 
     launcher.addEventListener("click", function () {
       if (win.hidden) {
-        open();
+        open(true);
       } else {
         hide();
       }
@@ -809,14 +837,15 @@
       applySize();
     });
     win.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !event.isComposing) {
+        event.stopPropagation();
         hide();
       }
     });
 
     place();
     if (read("sessionStorage", OPEN_KEY) === "1") {
-      open();
+      open(false);
     }
   }
 
@@ -824,7 +853,9 @@
     var page = document.getElementById("concierge-chat-page");
     if (page) {
       var chat = new Chat(page);
-      chat.load();
+      chat.load().catch(function () {
+        // Shown in the conversation by load().
+      });
       chat.focus();
       return;
     }

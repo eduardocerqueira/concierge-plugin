@@ -1,15 +1,16 @@
 # Concierge
 
-[![CI](https://github.com/eduardocerqueira/concierge-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/eduardocerqueira/concierge-plugin/actions/workflows/ci.yml)
-[![CVE scan](https://github.com/eduardocerqueira/concierge-plugin/actions/workflows/cve-scan.yml/badge.svg)](https://github.com/eduardocerqueira/concierge-plugin/actions/workflows/cve-scan.yml)
+[![CI](https://github.com/jenkinsci/concierge-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/jenkinsci/concierge-plugin/actions/workflows/ci.yml)
+[![CVE scan](https://github.com/jenkinsci/concierge-plugin/actions/workflows/cve-scan.yml/badge.svg)](https://github.com/jenkinsci/concierge-plugin/actions/workflows/cve-scan.yml)
 [![Licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
 **Onboarding and an AI assistant for Jenkins that know your instance, and show every person only
 what they are already allowed to see.**
 
 ![The Concierge welcome page for a developer on the payments team. A welcome message from the team,
-eight tiles counting the jobs she can see by status, a "Start here" list of two pinned jobs with a
-note on each, and three guided tours.](docs/images/welcome.png)
+eight tiles counting the jobs she can see by status, what is building and the agents, a "Start
+here" list of three pinned jobs with a note on each, and three guided tours. The Concierge bell sits
+in the bottom-right corner.](docs/images/welcome.png)
 
 *The welcome page as alice, a developer on the payments team, sees it. Every number, job and tour
 on it is computed from what she can read, so the platform team's jobs are simply not there.*
@@ -53,11 +54,11 @@ log, the job's history. It uses read-only tools that run as you, so it can never
 can. Logs are stripped of secrets before they leave the controller, and an administrator decides
 what kinds of data may be shared at all.
 
-![The Concierge chat window floating over a failing job. Asked why the last build failed, the
-assistant quotes the end of the console log in a code block, "ERROR: connection refused
-(staging.payments.internal:8443)", explains that the deploy step could not reach its server, and
-lists what to check. Underneath: "Looked at" with chips for get build and get build
-log.](docs/images/assistant.png)
+![The Concierge chat window floating over a failing job. Under a "Today" divider, the question "Why
+did the last build fail?" sits on the right with its time. Concierge answers with its own time:
+payments/web-deploy #1 finished with FAILURE, and the console log stops at "ERROR: connection
+refused (staging.payments.internal:8443)", quoted in a code block with a copy
+button.](docs/images/assistant.png)
 
 *The chat floats over every page and knows which page you are on. Drag its corner to resize it,
 or expand it. Every answer says which tools it used.*
@@ -78,7 +79,13 @@ never be set by the assistant, and re-runs never copy secret values.*
 
 ## Quick start
 
-Concierge is not on the Jenkins update centre yet. To try it:
+1. **Manage Jenkins → Plugins → Available plugins**, search for **Concierge**, and install it.
+2. Open **Concierge** from the Jenkins header. The welcome page, tours and learning paths work
+   straight away, with no AI and nothing sent anywhere.
+3. Optionally, pin the jobs newcomers should start with: **Edit welcome and start here**.
+4. Optionally, turn on the assistant under **Manage Jenkins → System → Concierge assistant**.
+
+To try it without touching your own controller:
 
 ```bash
 ./scripts/demo.sh --anthropic      # or --openai --model M, --ollama MODEL, or nothing for no AI
@@ -86,18 +93,8 @@ Concierge is not on the Jenkins update centre yet. To try it:
 
 That builds the plugin and starts a throwaway, secured Jenkins on <http://localhost:8080/concierge/>
 with three users who each see a different instance. [docs/demo.md](docs/demo.md) has a walk-through
-of what to check as each of them.
-
-To install it on your own controller, build it with `mvn clean package` and upload
-`target/concierge.hpi` under **Manage Jenkins → Plugins → Advanced settings**, after installing the
-**Credentials** and **Plain Credentials** plugins it depends on. Then:
-
-1. Open **Concierge** from the Jenkins header. The welcome page, tours and learning paths work
-   straight away, with no AI and nothing sent anywhere.
-2. Optionally, pin the jobs newcomers should start with: **Edit welcome and start here**.
-3. Optionally, turn on the assistant under **Manage Jenkins → System → Concierge assistant**.
-
-Requires **Jenkins 2.568.3 or newer** on **Java 21 or newer**.
+of what to check as each of them, and [docs/building.md](docs/building.md) covers building from
+source.
 
 ---
 
@@ -112,7 +109,7 @@ Requires **Jenkins 2.568.3 or newer** on **Java 21 or newer**.
 | **Assistant** | A floating, resizable chat on every page and a full-page view, answering from jobs, builds, test results, the queue, agents and plugins |
 | **Providers** | Anthropic, OpenAI, xAI Grok, DeepSeek (only once explicitly allowed), or a local model such as Ollama, optionally through an AI gateway |
 | **Builds from the chat** | Proposed by the assistant, confirmed by the person, limited to jobs an administrator lists |
-| **Cost** | Tokens and estimated cost on every answer, a monthly usage page, and an optional monthly budget |
+| **Cost** | Tokens and estimated cost per person on a monthly usage page for administrators, and an optional monthly budget |
 
 ### Choosing a model
 
@@ -150,7 +147,8 @@ In short:
   has to confirm every build. Script Console, credentials, replay and workspaces are never offered
   to the model.
 - **Everything is audited**: every question and tool call goes to a dedicated logger, without
-  answers, tool results or keys.
+  answers, tool results or keys. Question text is logged at `FINE`, for a log recorder, rather than
+  to the system log.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
@@ -185,7 +183,7 @@ that look like JSON into objects.
 | [Trying it locally](docs/demo.md) | The one-command demo, and what to check as each user |
 | [Using Concierge](docs/usage.md) | Permissions, the welcome page, tours, curation, every assistant setting, cost and builds |
 | [Security design](docs/security-design.md) | The rules every change follows, and the risk each one addresses |
-| [Building](docs/building.md) | Building and running from source |
+| [Building](docs/building.md) | Building, running and installing from source |
 | [Contributing](docs/CONTRIBUTING.md) | Issues, pull requests and house rules |
 | [The bar](docs/quality-bar.md) | All tests passing and zero shipped CVEs, for every pull request |
 
