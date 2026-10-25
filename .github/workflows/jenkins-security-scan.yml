@@ -1,0 +1,31 @@
+# The CodeQL scan the Jenkins project runs against plugins, using its own query pack. Hosting does
+# not require it to be green, but it is the scan that finds the classes of bug behind most Jenkins
+# advisories, so it runs on every change from the first commit.
+#
+# It uploads to code scanning, which a private repository only has with GitHub Advanced Security.
+# Until this repository is public the job is skipped rather than left failing.
+#
+# More information about the Jenkins security scan can be found at the developer docs: https://www.jenkins.io/redirect/jenkins-security-scan/
+---
+name: Jenkins Security Scan
+on:
+  push:
+    branches:
+      - "master"
+      - "main"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+
+jobs:
+  security-scan:
+    if: ${{ !github.event.repository.private }}
+    uses: jenkins-infra/jenkins-security-scan/.github/workflows/jenkins-security-scan.yaml@da7438f10fecc21e40174d420ef34daae0874122 # v2
+    with:
+      java-cache: 'maven'  # Optionally enable use of a build dependency cache. Specify 'maven' or 'gradle' as appropriate.
+      # java-version: 21  # Optionally specify what version of Java to set up for the build, or remove to use a recent default.

@@ -1,0 +1,58 @@
+name: CI
+
+# Every pull request has to go through this before it can be merged.
+# See docs/quality-bar.md for what "passing" means.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test (JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The parent pom requires JDK 21 or newer to build. These mirror the Jenkinsfile, and
+        # ci.jenkins.io accepts only these two.
+        jdk: [21, 25]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v6
+        with:
+          java-version: ${{ matrix.jdk }}
+          distribution: temurin
+          cache: maven
+
+      - name: Build, test and verify
+        # install rather than verify, because that is what ci.jenkins.io runs. verify skips
+        # javadoc, so a dangling {@link} would otherwise first show up on the Jenkins CI.
+        run: mvn -B -ntp clean install
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: surefire-reports-jdk${{ matrix.jdk }}
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload the plugin
+        if: matrix.jdk == 21
+        uses: actions/upload-artifact@v7
+        with:
+          name: concierge-hpi
+          path: target/*.hpi
+          if-no-files-found: error

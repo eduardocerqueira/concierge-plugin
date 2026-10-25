@@ -1,0 +1,9 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <div>
+    Helps people find their way around this Jenkins instance: a welcome page, learning paths and
+    guided tours built from the instance's own jobs, plus an optional AI assistant using your own
+    Anthropic, OpenAI, xAI Grok, DeepSeek or local model. Everyone sees only what they are already
+    allowed to see.
+  </div>
+</j:jelly>

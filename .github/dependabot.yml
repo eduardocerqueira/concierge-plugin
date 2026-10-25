@@ -1,0 +1,29 @@
+# Keeps dependencies current. Concierge will depend on more than Jenkins core once the assistant
+# lands (Credentials, at least), so this matters more here than in a plugin with no dependencies.
+# The Sunday CVE scan tells you when something needs attention; this is what does something about it.
+version: 2
+
+updates:
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    # One pull request for the routine bumps rather than five; anything with a CVE attached still
+    # comes through on its own so it is impossible to miss in a batch.
+    groups:
+      maven-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies]
+    groups:
+      actions:
+        patterns: ["*"]

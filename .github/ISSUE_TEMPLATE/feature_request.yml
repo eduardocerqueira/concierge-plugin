@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something that would help people find their way around Jenkins.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is hard today
+      description: Describe the situation, such as a new hire's first week, rather than the feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+    validations:
+      required: true
+
+  - type: textarea
+    id: data
+    attributes:
+      label: What data it would need
+      description: Which jobs, builds or settings it reads, and whether any of it would be sent to an AI provider.
