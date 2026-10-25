@@ -1,0 +1,40 @@
+<?jelly escape-by-default='true'?>
+<!--
+  Curation form for the welcome message and the "start here" list. The view is only rendered for
+  tour managers, and doSaveTours checks the permission again, since a form is just a URL.
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
+  <l:layout title="${%Edit welcome and start here}" type="one-column" permission="${it.manageToursPermission}">
+    <l:main-panel>
+      <div class="concierge">
+        <p class="concierge-eyebrow"><a href=".">Concierge</a></p>
+        <h1>${%Edit welcome and start here}</h1>
+        <p class="concierge-muted">${%manage.intro}</p>
+        <f:form method="post" action="saveTours" name="config">
+          <f:entry title="${%Welcome message}" description="${%welcome.description}">
+            <f:textarea name="welcomeMessage" value="${it.welcomeMessage}"/>
+          </f:entry>
+          <f:section title="${%Start here}">
+            <f:description>${%startHere.description}</f:description>
+            <f:repeatable var="pinned" items="${it.pinnedJobs}" name="pinned" minimum="0" add="${%Add a job}">
+              <table class="concierge-pinned-row">
+                <f:entry title="${%Job full name}" description="${%fullName.description}">
+                  <f:textbox name="fullName" value="${pinned.fullName}"/>
+                </f:entry>
+                <f:entry title="${%Note for newcomers}">
+                  <f:textbox name="note" value="${pinned.note}"/>
+                </f:entry>
+                <f:entry>
+                  <f:repeatableDeleteButton value="${%Remove}"/>
+                </f:entry>
+              </table>
+            </f:repeatable>
+          </f:section>
+          <f:bottomButtonBar>
+            <f:submit value="${%Save}"/>
+          </f:bottomButtonBar>
+        </f:form>
+      </div>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>

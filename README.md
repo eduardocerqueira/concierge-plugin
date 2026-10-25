@@ -1,7 +1,8 @@
 # Concierge
 
-> **Status: proposal.** This repository holds the design and the build setup. There is no feature
-> code yet. See [docs/roadmap.md](docs/roadmap.md) for what is planned and in what order.
+> **Status: phase 1 (onboarding) is built.** The AI assistant follows. See
+> [docs/roadmap.md](docs/roadmap.md) for what is done and what comes next, and
+> [docs/usage.md](docs/usage.md) for how to use it.
 
 Concierge helps people find their way around a Jenkins instance they have just joined, and answers
 questions about it.
@@ -42,6 +43,7 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Documentation
 
+- [docs/usage.md](docs/usage.md): the welcome page, tours, learning paths and curation.
 - [docs/roadmap.md](docs/roadmap.md): phases, providers and the name.
 - [docs/security-design.md](docs/security-design.md): the rules, and why each exists.
 - [docs/quality-bar.md](docs/quality-bar.md): what every pull request must pass.

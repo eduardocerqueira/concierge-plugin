@@ -1,0 +1,6 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <j:if test="${it.enabled}">
+    <link rel="stylesheet" type="text/css" href="${resURL}/plugin/concierge/css/concierge.css"/>
+  </j:if>
+</j:jelly>

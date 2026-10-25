@@ -1,0 +1,6 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <j:if test="${it.enabled}">
+    <script src="${resURL}/plugin/concierge/js/tour.js" type="text/javascript"/>
+  </j:if>
+</j:jelly>
