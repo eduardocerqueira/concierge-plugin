@@ -19,11 +19,14 @@ Works with no API key and sends nothing off the instance. See [usage.md](usage.m
 - **Curated tours.** Admins or team leads pin "start here" jobs, add notes and order the steps.
 - **Progress checklist** for each user.
 
-## Phase 2: assistant, read-only
+## Phase 2: assistant, read-only (done)
+
+See the assistant section of [usage.md](usage.md).
 
 - Chat about jobs, builds, failures and plugins, aware of the page the user is on.
-- Plain-language summaries of what a job does, generated for each viewer.
-- AI-drafted tours that a person approves before anyone sees them.
+- Plain-language summaries of what a job does, generated for each viewer: done through the chat
+  ("Explain what this job does" on a job page), not as a separate feature.
+- AI-drafted tours that a person approves before anyone sees them: not built yet.
 - Providers:
 
   | Provider | API | Notes |

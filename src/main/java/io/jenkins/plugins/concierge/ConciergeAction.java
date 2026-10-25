@@ -54,6 +54,16 @@ public class ConciergeAction implements RootAction, StaplerProxy {
         return this;
     }
 
+    /** The assistant, at {@code /concierge/assistant}. It checks its own permission. */
+    @NonNull
+    public AssistantEndpoint getAssistant() {
+        return new AssistantEndpoint();
+    }
+
+    public boolean isAssistantAvailable() {
+        return AssistantEndpoint.isAvailable();
+    }
+
     @NonNull
     public InstanceOverview getOverview() {
         return InstanceOverview.forCurrentUser();

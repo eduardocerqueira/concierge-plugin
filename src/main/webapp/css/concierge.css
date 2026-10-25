@@ -319,3 +319,197 @@
     transition: top 0.15s ease, left 0.15s ease;
   }
 }
+
+/* ------------------------------------------------------------------ assistant */
+
+.concierge-launcher {
+  position: fixed;
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  /* Above Jenkins' sticky header and its dropdowns, below its modal dialogs. */
+  z-index: 1990;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.concierge-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100vw);
+  border-left: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
+  background: var(--background, #fff);
+  color: var(--text-color, #1f2328);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+}
+
+.concierge-panel[hidden] {
+  display: none;
+}
+
+.concierge-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
+}
+
+.concierge-panel__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.concierge-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.concierge-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.concierge-chat--panel {
+  flex: 1;
+  padding: 1rem;
+}
+
+.concierge-chat--page {
+  min-height: 60vh;
+  max-width: 900px;
+}
+
+.concierge-chat__log {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 12rem;
+  overflow-y: auto;
+}
+
+.concierge-chat--page .concierge-chat__log {
+  max-height: 65vh;
+}
+
+.concierge-chat__empty-title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.concierge-chat__examples {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.concierge-chat__example {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
+  border-radius: 8px;
+  background: var(--card-background, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.concierge-chat__example:hover,
+.concierge-chat__example:focus-visible {
+  border-color: var(--accent-color, #1d6a86);
+}
+
+.concierge-chat__message {
+  max-width: 92%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+
+.concierge-chat__message p {
+  margin: 0 0 0.5rem;
+}
+
+.concierge-chat__message p:last-child,
+.concierge-chat__message ul:last-child,
+.concierge-chat__message ol:last-child {
+  margin-bottom: 0;
+}
+
+.concierge-chat__message ul,
+.concierge-chat__message ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.2rem;
+}
+
+.concierge-chat__message--user {
+  align-self: flex-end;
+  background: var(--accent-color, #1d6a86);
+  color: var(--background, #fff);
+  white-space: pre-wrap;
+}
+
+.concierge-chat__message--assistant {
+  align-self: flex-start;
+  border: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
+  background: var(--card-background, transparent);
+}
+
+.concierge-chat__message--pending {
+  align-self: flex-start;
+  color: var(--text-color-secondary, #5c6370);
+  font-style: italic;
+}
+
+.concierge-chat__message--error {
+  align-self: flex-start;
+  border: 1px solid var(--red, #d33833);
+  color: var(--red, #d33833);
+}
+
+.concierge-chat__code {
+  max-height: 20rem;
+  margin: 0 0 0.5rem;
+  padding: 0.6rem;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--pre-background, rgba(128, 128, 128, 0.12));
+  font-size: 0.85rem;
+}
+
+.concierge-chat__tools {
+  margin: 0.5rem 0 0 !important;
+  color: var(--text-color-secondary, #5c6370);
+  font-size: 0.8rem;
+}
+
+.concierge-chat__form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.concierge-chat__input {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+}
+
+.concierge-chat__note {
+  margin: 0;
+  color: var(--text-color-secondary, #5c6370);
+  font-size: 0.8rem;
+}
+

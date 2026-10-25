@@ -1,6 +1,7 @@
 # Concierge
 
-> **Status: phase 1 (onboarding) is built.** The AI assistant follows. See
+> **Status: onboarding (phase 1) and the read-only AI assistant (phase 2) are built.** Actions
+> with confirmation follow. See
 > [docs/roadmap.md](docs/roadmap.md) for what is done and what comes next, and
 > [docs/usage.md](docs/usage.md) for how to use it.
 

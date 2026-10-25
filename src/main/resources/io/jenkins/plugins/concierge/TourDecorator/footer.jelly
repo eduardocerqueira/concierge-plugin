@@ -3,4 +3,7 @@
   <j:if test="${it.enabled}">
     <script src="${resURL}/plugin/concierge/js/tour.js" type="text/javascript"/>
   </j:if>
+  <j:if test="${it.assistantAvailable}">
+    <script src="${resURL}/plugin/concierge/js/assistant.js" type="text/javascript"/>
+  </j:if>
 </j:jelly>

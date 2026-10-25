@@ -68,6 +68,9 @@ by other people, and the model reads them.
 - Model output can never trigger an action directly. Any action shows a confirmation card built from
   the structured request, not from the model's text, and the user confirms each time.
 - Actions are off by default and limited to jobs an admin allows.
+- Some local models write a tool call as JSON text instead of using the tool-calling field. Such a
+  reply is treated as a call only when it is nothing but that JSON and names a tool that was
+  offered. Only the model's own reply is read this way, never tool results or other data.
 - Some tools are never offered to the model: Script Console or Groovy, replaying builds or editing
   pipelines, reading credentials, reading agent workspaces, installing plugins, changing
   configuration.

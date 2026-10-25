@@ -1,0 +1,17 @@
+<?jelly escape-by-default='true'?>
+<!--
+  The assistant as a full page. assistant.js finds #concierge-chat-page and runs the chat inside it
+  instead of opening the floating panel.
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+  <l:layout title="${%Concierge assistant}" type="one-column">
+    <l:main-panel>
+      <div class="concierge">
+        <p class="concierge-eyebrow"><a href="..">Concierge</a></p>
+        <h1>${%Ask about this Jenkins}</h1>
+        <p class="concierge-muted">${%intro(it.config.provider.displayName)}</p>
+        <div id="concierge-chat-page" class="concierge-chat concierge-chat--page"/>
+      </div>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>
