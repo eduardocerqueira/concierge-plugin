@@ -165,7 +165,7 @@
     form.appendChild(input);
     form.appendChild(sendButton);
 
-    var note = el("p", "concierge-chat__note", "Uses only what you can see in Jenkins. Answers can be wrong.");
+    var note = el("p", "concierge-chat__note", "Uses only what you can see in Jenkins. AI can be confidently wrong: think critically and check anything important before acting on it.");
 
     container.appendChild(log);
     container.appendChild(form);
@@ -326,7 +326,7 @@
           addMessage(turn.role === "user" ? "user" : "assistant", turn.text);
         });
         if (body.provider) {
-          note.textContent = "Answers come from " + body.provider + ". Uses only what you can see in Jenkins. Answers can be wrong.";
+          note.textContent = "Answers come from " + body.provider + ". Uses only what you can see in Jenkins. AI can be confidently wrong: think critically and check anything important before acting on it.";
         }
       });
     };
