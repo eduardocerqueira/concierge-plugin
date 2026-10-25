@@ -19,15 +19,31 @@ automatically; see [building.md](building.md).
 | User (password = name) | Sees | Can |
 | --- | --- | --- |
 | `admin` | Everything | Everything, including Concierge settings and curation |
-| `alice` | The `payments` folder | Build payments jobs, use the assistant |
-| `bob` | The `payments` folder | Read only, no assistant |
+| `alice` | Everything except `platform` | Build `payments` jobs, use the assistant |
+| `bob` | Everything except `platform` | Read only, no assistant |
 
-| Folder | Jobs |
+| Where | Jobs |
 | --- | --- |
-| `payments` | `api-build` (passing, has a `BRANCH` parameter), `web-deploy` (fails with "connection refused", and prints a fake token in its log), `nightly-tests` (unstable) |
-| `platform` | `terraform-apply` (failing), `secrets-rotation`. Visible to admin only. |
+| `payments` | `api-build` (passing, a `BRANCH` parameter, two builds), `web-deploy` (fails with "connection refused", and prints a fake token in its log), `nightly-tests` (unstable), `release-train` (seven parameters, three builds, the last one failed), `checkout-service` (passing), `ledger-reconcile` (building for half an hour), `fraud-model-train` (never built), `legacy-batch` (disabled) |
+| `platform` | `terraform-apply` (failing), `secrets-rotation` (passing), `k8s-cluster-upgrade` (unstable). Visible to admin only. |
+| Top level | `docs-site` (passing), `dependency-audit` (unstable) |
 
-Curation is filled in: a welcome message and three pinned jobs, one of them in `platform`.
+`payments/release-train` is the job for trying builds with parameters. It has one of each common
+kind:
+
+| Parameter | Kind | Default |
+| --- | --- | --- |
+| `VERSION` | Text | `2.15.0` |
+| `ENVIRONMENT` | Choice: `staging`, `production`, `sandbox` | `staging` |
+| `REGION` | Choice: `eu-west-1`, `us-east-1`, `ap-south-1` | `eu-west-1` |
+| `CANARY_PERCENT` | Choice: `5`, `10`, `25`, `50`, `100` | `5` |
+| `RUN_SMOKE_TESTS` | True or false | true |
+| `RELEASE_NOTES` | Multi-line text | `Routine release.` |
+| `DEPLOY_TOKEN` | Password | a demo token |
+
+It fails a production release that skips the smoke tests, which is what happened to build #3.
+
+Curation is filled in: a welcome message and four pinned jobs, one of them in `platform`.
 
 With an AI option, the assistant is on, shares build logs and job configuration, and may propose
 builds of `payments/**`.
@@ -56,9 +72,9 @@ Open <http://localhost:8080/concierge/> and work through these. Each one checks 
 
 ### 1. Everyone sees a different Jenkins
 
-1. Sign in as **admin**. The welcome page counts 5 jobs, lists both folders and shows three pinned
+1. Sign in as **admin**. The welcome page counts 13 jobs, lists both folders and shows four pinned
    jobs.
-2. Sign out, sign in as **bob**. Now it is 3 jobs, one folder, two pinned jobs. Nothing from
+2. Sign out, sign in as **bob**. Now it is 10 jobs, one folder, three pinned jobs. Nothing from
    `platform` appears anywhere: not in the counts, the lists, the pinned jobs or the tours.
 3. As bob, the **DevOps** learning path has no plugin, log or security steps, because bob cannot
    open those pages.
@@ -93,9 +109,17 @@ Open <http://localhost:8080/concierge/> and work through these. Each one checks 
 1. As **alice**, on `payments/api-build`, ask "Run this again with BRANCH=release/1". A card
    appears. Nothing is queued yet; check the job page.
 2. Click **Run it**. The build starts, as "Started by user alice", with `BRANCH=release/1`.
-3. Ask to run `platform/terraform-apply`. It is refused: alice cannot see it, and it is not in the
+3. On `payments/release-train`, ask "Why did the last release fail?". The log says production
+   needs the smoke tests.
+4. Ask "Release 2.16.0 to production in us-east-1 with a 10% canary, smoke tests on, release notes:
+   faster refunds". The card lists all seven parameters: the six you asked for or their defaults,
+   and `DEPLOY_TOKEN` as hidden. Click **Run it** and open the build's **Parameters** page to check
+   them.
+5. Ask "Release to the moon environment". It is refused, because `moon` is not one of the choices.
+   Ask it to set `DEPLOY_TOKEN`: refused too, because the assistant can never set a password.
+6. Ask to run `platform/terraform-apply`. It is refused: alice cannot see it, and it is not in the
    allowed jobs.
-4. As **admin**, untick **Let the assistant propose builds**, save, and click **Run it** on an old
+7. As **admin**, untick **Let the assistant propose builds**, save, and click **Run it** on an old
    card as alice. It is refused.
 
 ### 6. Settings

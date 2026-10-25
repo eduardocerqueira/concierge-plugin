@@ -352,6 +352,75 @@ class ActionsTest {
                         .getStatusCode());
     }
 
+    /** A job like the demo's release-train: every common parameter type at once. */
+    private FreeStyleProject releaseJob() throws Exception {
+        FreeStyleProject release = team.createProject(FreeStyleProject.class, "release-train");
+        release.addProperty(new ParametersDefinitionProperty(
+                new StringParameterDefinition("VERSION", "2.15.0", ""),
+                new hudson.model.ChoiceParameterDefinition(
+                        "ENVIRONMENT", new String[] {"staging", "production", "sandbox"}, ""),
+                new hudson.model.ChoiceParameterDefinition(
+                        "CANARY_PERCENT", new String[] {"5", "10", "25", "50", "100"}, ""),
+                new hudson.model.BooleanParameterDefinition("RUN_SMOKE_TESTS", true, ""),
+                new hudson.model.TextParameterDefinition("RELEASE_NOTES", "Routine release.", ""),
+                new PasswordParameterDefinition("DEPLOY_TOKEN", hudson.util.Secret.fromString("tok-default"), "")));
+        return release;
+    }
+
+    @Test
+    void complexParametersRoundTripThroughTheCard() throws Exception {
+        FreeStyleProject release = releaseJob();
+        Map<String, Object> asked = new java.util.LinkedHashMap<>();
+        asked.put("VERSION", "2.16.0");
+        asked.put("ENVIRONMENT", "production");
+        asked.put("CANARY_PERCENT", "10");
+        asked.put("RUN_SMOKE_TESTS", "false");
+        asked.put("RELEASE_NOTES", "Faster refunds.\nNew retry logic.");
+        script.add(call("propose_build", Map.of("job", "team/release-train", "parameters", asked)));
+        JenkinsRule.WebClient alice = r.createWebClient().login("alice");
+        Map<String, Object> proposal = onlyProposal(ask(alice));
+        assertEquals(
+                List.of(
+                        Map.of("name", "VERSION", "value", "2.16.0"),
+                        Map.of("name", "ENVIRONMENT", "value", "production"),
+                        Map.of("name", "CANARY_PERCENT", "value", "10"),
+                        Map.of("name", "RUN_SMOKE_TESTS", "value", "false"),
+                        Map.of("name", "RELEASE_NOTES", "value", "Faster refunds.\nNew retry logic."),
+                        Map.of("name", "DEPLOY_TOKEN", "value", "(default, hidden)")),
+                proposal.get("parameters"),
+                "every value the card shows, in the job's order, with the password hidden");
+
+        post(alice, "concierge/assistant/confirm", "id", (String) proposal.get("id"));
+        r.waitUntilNoActivity();
+        ParametersAction values = release.getLastBuild().getAction(ParametersAction.class);
+        assertEquals("production", values.getParameter("ENVIRONMENT").getValue());
+        assertEquals("10", values.getParameter("CANARY_PERCENT").getValue());
+        assertEquals(Boolean.FALSE, values.getParameter("RUN_SMOKE_TESTS").getValue());
+        assertEquals(
+                "Faster refunds.\nNew retry logic.",
+                values.getParameter("RELEASE_NOTES").getValue());
+        assertEquals(
+                "tok-default",
+                ((PasswordParameterValue) values.getParameter("DEPLOY_TOKEN"))
+                        .getValue()
+                        .getPlainText());
+    }
+
+    @Test
+    void choicesOutsideTheListAreRefused() throws Exception {
+        releaseJob();
+        AssistantTools tools =
+                new AssistantTools(AssistantConfiguration.get(), new Redactor(List.of()), new BuildProposals());
+        Llm.ToolResult result = as(
+                "alice",
+                () -> tools.run(new Llm.ToolCall(
+                        "1",
+                        "propose_build",
+                        Map.of("job", "team/release-train", "parameters", Map.of("ENVIRONMENT", "moon")))));
+        assertTrue(result.error(), result.content());
+        assertTrue(result.content().contains("ENVIRONMENT"), result.content());
+    }
+
     @Test
     void jobPatterns() {
         JobPatterns patterns = new JobPatterns("team/*\n# comment\nops/**, exact-job");
