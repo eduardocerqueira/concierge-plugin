@@ -42,8 +42,17 @@ Security is a design constraint here, not a phase. The rules every change has to
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
+## Try it
+
+```bash
+./scripts/demo.sh --anthropic   # or --ollama MODEL, or nothing for onboarding only
+```
+
+Then follow the walk-through in [docs/demo.md](docs/demo.md).
+
 ## Documentation
 
+- [docs/demo.md](docs/demo.md): a local demo and a test walk-through.
 - [docs/usage.md](docs/usage.md): the welcome page, tours, learning paths and curation.
 - [docs/roadmap.md](docs/roadmap.md): phases, providers and the name.
 - [docs/security-design.md](docs/security-design.md): the rules, and why each exists.
