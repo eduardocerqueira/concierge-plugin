@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
@@ -53,6 +54,8 @@ public class AssistantConfiguration extends GlobalConfiguration {
     private boolean allowUserKeys;
     private boolean allowActions;
     private String actionJobs;
+    private String customModel;
+    private String modelPrices;
 
     public AssistantConfiguration() {
         load();
@@ -158,13 +161,58 @@ public class AssistantConfiguration extends GlobalConfiguration {
         this.provider = provider;
     }
 
-    /** The model id, falling back to the provider's default where it has one. */
+    /**
+     * The model in use: a custom id when one is set, otherwise the one picked from the provider's
+     * list, otherwise the provider's default where it has one.
+     */
     @NonNull
     public String getModel() {
+        if (customModel != null && !customModel.isBlank()) {
+            return customModel;
+        }
         if (model == null || model.isBlank()) {
             return getProvider().getDefaultModel();
         }
         return model;
+    }
+
+    /** The model picked from the list, as stored. For the settings form. */
+    @NonNull
+    public String getSelectedModel() {
+        return model == null ? "" : model;
+    }
+
+    @DataBoundSetter
+    public void setSelectedModel(String selectedModel) {
+        setModel(selectedModel);
+    }
+
+    /** A model id typed by hand, for gateways, fine-tunes or models the list does not show. */
+    @NonNull
+    public String getCustomModel() {
+        return customModel == null ? "" : customModel;
+    }
+
+    @DataBoundSetter
+    public void setCustomModel(String customModel) {
+        this.customModel = customModel == null || customModel.isBlank() ? null : customModel.trim();
+    }
+
+    /** Administrator prices, one model per line: {@code model-id = 2.00 / 10.00}. */
+    @NonNull
+    public String getModelPrices() {
+        return modelPrices == null ? "" : modelPrices;
+    }
+
+    @DataBoundSetter
+    public void setModelPrices(String modelPrices) {
+        this.modelPrices = modelPrices == null ? null : modelPrices.trim();
+    }
+
+    /** What the configured model costs, or null when no source knows. */
+    @CheckForNull
+    ModelPrice getPrice() {
+        return ModelPrice.find(getProvider(), getModel(), null, ModelPrice.parseOverrides(modelPrices, null));
     }
 
     @DataBoundSetter
@@ -316,6 +364,85 @@ public class AssistantConfiguration extends GlobalConfiguration {
 
     // ------------------------------------------------------------------ form helpers
 
+    /**
+     * The provider's models, with prices where known. Fetched with the chosen credential, so
+     * admin-only and POST-only like the connection test (docs/security-design.md, rule 3).
+     */
+    @POST
+    public ListBoxModel doFillSelectedModelItems(
+            @QueryParameter String provider,
+            @QueryParameter String credentialsId,
+            @QueryParameter String baseUrl,
+            @QueryParameter String modelPrices) {
+        ListBoxModel items = new ListBoxModel();
+        // The saved choice, read on the server: a fill method cannot take its own field as input.
+        String current = getSelectedModel();
+        if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
+            if (!current.isEmpty()) {
+                items.add(current, current);
+            }
+            return items;
+        }
+        Provider p;
+        try {
+            p = provider == null || provider.isBlank() ? getProvider() : Provider.valueOf(provider);
+        } catch (IllegalArgumentException e) {
+            return items;
+        }
+        String url = baseUrl == null || baseUrl.isBlank() ? p.getDefaultBaseUrl() : baseUrl.trim();
+        Map<String, ModelPrice> overrides = ModelPrice.parseOverrides(modelPrices, null);
+        items.add(Messages.Models_choose(), "");
+        boolean currentListed = current.isEmpty();
+        if (url.isBlank() || checkUrl(url).kind == FormValidation.Kind.ERROR) {
+            items.add(Messages.Models_noBaseUrl(), "");
+        } else {
+            String key = lookupApiKey(credentialsId);
+            if (p.isKeyRequired() && key == null) {
+                items.add(Messages.Models_noKey(), "");
+            } else {
+                try {
+                    for (ModelCatalog.Model m : ModelCatalog.list(p, url, key)) {
+                        items.add(label(p, m.id(), m.displayName(), m.livePrice(), overrides), m.id());
+                        currentListed |= m.id().equals(current);
+                    }
+                } catch (Llm.ProviderException e) {
+                    items.add(Messages.Models_failed(e.getStatus(), e.getMessage()), "");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    items.add(Messages.Models_failed(0, e.getClass().getSimpleName()), "");
+                }
+            }
+        }
+        if (!currentListed) {
+            items.add(label(p, current, current + " " + Messages.Models_notListed(), null, overrides), current);
+        }
+        for (ListBoxModel.Option option : items) {
+            option.selected = !current.isEmpty() && option.value.equals(current);
+        }
+        return items;
+    }
+
+    @NonNull
+    static String label(
+            Provider provider, String id, String displayName, ModelPrice live, Map<String, ModelPrice> overrides) {
+        ModelPrice price = ModelPrice.find(provider, id, live, overrides);
+        String name = displayName == null || displayName.equals(id) ? id : displayName + " (" + id + ")";
+        return price == null
+                ? name + " \u2014 " + Messages.Models_priceUnknown()
+                : name + " \u2014 " + price.describe() + " (" + price.source() + ")";
+    }
+
+    @POST
+    public FormValidation doCheckModelPrices(@QueryParameter String value) {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        List<String> problems = new java.util.ArrayList<>();
+        ModelPrice.parseOverrides(value, problems);
+        return problems.isEmpty()
+                ? FormValidation.ok()
+                : FormValidation.error(Messages.Models_badPrices(String.join("; ", problems)));
+    }
+
     public ListBoxModel doFillProviderItems() {
         ListBoxModel items = new ListBoxModel();
         for (Provider p : Provider.values()) {
@@ -350,11 +477,13 @@ public class AssistantConfiguration extends GlobalConfiguration {
     @POST
     public FormValidation doTestConnection(
             @QueryParameter String provider,
-            @QueryParameter String model,
+            @QueryParameter String selectedModel,
+            @QueryParameter String customModel,
             @QueryParameter String credentialsId,
             @QueryParameter String baseUrl,
             @QueryParameter boolean allowDeepSeek) {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        String model = customModel != null && !customModel.isBlank() ? customModel : selectedModel;
         Provider p;
         try {
             p = provider == null ? null : Provider.valueOf(provider);

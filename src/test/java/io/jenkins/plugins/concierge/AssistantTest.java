@@ -397,7 +397,7 @@ class AssistantTest {
                 HttpMethod.POST);
         request.setRequestParameters(new ArrayList<>(List.of(
                 new NameValuePair("provider", "OPENAI"),
-                new NameValuePair("model", "m"),
+                new NameValuePair("selectedModel", "m"),
                 new NameValuePair("credentialsId", "ai-key"),
                 new NameValuePair("baseUrl", "https://attacker.example.com"))));
         alice.addCrumb(request);

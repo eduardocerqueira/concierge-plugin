@@ -71,7 +71,9 @@ knows which page you are on, so "why did this fail?" works on a job or build pag
 | Setting | Notes |
 | --- | --- |
 | Provider | Anthropic, OpenAI, xAI Grok, DeepSeek, or a local OpenAI-compatible model such as Ollama. |
-| Model | The provider's model id. Anthropic defaults to `claude-sonnet-5-5`. Use a model with reliable tool calling; small local models often answer without looking anything up. |
+| Model | Picked from the provider's own model list, fetched with the API key once provider, key and base URL are set. Each model shows its price per 1M tokens and where the price comes from: reported live (xAI), a dated list price shipped with Concierge (Anthropic), set by an administrator, or "price unknown". Anthropic defaults to `claude-sonnet-5-5`. Use a model with reliable tool calling; small local models often answer without looking anything up. |
+| Custom model id | Typed by hand; overrides the list. For gateways, fine-tuned models, or models the list does not show. |
+| Model prices | Your own prices, `model-id = input / output` in US dollars per 1M tokens, one per line. They override every other source and are only used for display and cost estimates. |
 | API key | A Secret text credential. Not needed for most local models. |
 | Base URL | Empty for the provider's own endpoint. Set it for a local model (`http://localhost:11434/v1`) or an AI gateway such as Cloudflare AI Gateway. |
 | Allow DeepSeek | Required to use DeepSeek's hosted API, which stores data in China. |
