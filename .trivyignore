@@ -1,0 +1,17 @@
+# Vulnerabilities deliberately not blocking the build.
+#
+# This file applies to the BLOCKING scan only — the one over what the .hpi actually ships. It is
+# not the place to silence the full-tree report, which covers Jenkins core and is informational by
+# design; see docs/quality-bar.md.
+#
+# The bar for what this plugin ships is zero, so this file should normally be empty. An entry is
+# only acceptable when all three of these are true, and each one must say so:
+#
+#   1. The vulnerability is not reachable from this plugin, or there is no fixed version yet.
+#   2. There is a link to the upstream issue tracking the fix.
+#   3. There is an expiry date, so the exception is revisited rather than forgotten.
+#
+# Format:
+#   CVE-YYYY-NNNNN exp:YYYY-MM-DD
+#   # why: <one line>
+#   # upstream: <url>

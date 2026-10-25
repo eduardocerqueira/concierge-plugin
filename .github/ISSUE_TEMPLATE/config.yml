@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  # Discussions are not enabled on the jenkinsci repository, and the Jenkins community forum is
+  # where plugin users already are.
+  - name: Question about using the plugin
+    url: https://community.jenkins.io/
+    about: Ask on the Jenkins community forum rather than opening an issue.

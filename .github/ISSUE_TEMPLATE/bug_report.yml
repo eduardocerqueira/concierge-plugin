@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in Concierge is wrong or missing. Security problems go to the Jenkins security team instead; see SECURITY.md.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Welcome page
+        - Learning paths or tours
+        - Assistant
+        - Configuration
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: provider
+    attributes:
+      label: AI provider and model, if the assistant is involved
+      placeholder: "Anthropic, claude-sonnet-5-5"
+
+  - type: input
+    id: versions
+    attributes:
+      label: Jenkins and plugin versions
+      placeholder: "Jenkins 2.568.3, Concierge 1.0"
+    validations:
+      required: true
