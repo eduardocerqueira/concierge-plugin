@@ -334,7 +334,65 @@
   bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   /* Above Jenkins' sticky header and its dropdowns, below its modal dialogs. */
   z-index: 1990;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border: 2px solid var(--background, #fff);
+  border-radius: 50%;
+  background: var(--accent-color, #1d6a86);
+  color: var(--background, #fff);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.concierge-launcher svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  fill: currentColor;
+}
+
+.concierge-launcher:hover,
+.concierge-launcher:focus-visible {
+  filter: brightness(1.1);
+}
+
+.concierge-launcher:focus-visible {
+  outline: 3px solid var(--focus-input-glow, rgba(29, 106, 134, 0.4));
+  outline-offset: 3px;
+}
+
+.concierge-launcher[hidden] {
+  display: none;
+}
+
+.concierge-launcher__tooltip {
+  position: absolute;
+  right: calc(100% + 0.6rem);
+  top: 50%;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  background: var(--text-color, #1f2328);
+  color: var(--background, #fff);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(4px, -50%);
+}
+
+.concierge-launcher:hover .concierge-launcher__tooltip,
+.concierge-launcher:focus-visible .concierge-launcher__tooltip {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .concierge-launcher__tooltip {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
 }
 
 .concierge-panel {
