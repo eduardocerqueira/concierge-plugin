@@ -1,7 +1,7 @@
 # Concierge
 
-> **Status: onboarding (phase 1) and the read-only AI assistant (phase 2) are built.** Actions
-> with confirmation follow. See
+> **Status: all three phases are built:** onboarding, the read-only AI assistant, and builds the
+> assistant proposes and the person confirms. See
 > [docs/roadmap.md](docs/roadmap.md) for what is done and what comes next, and
 > [docs/usage.md](docs/usage.md) for how to use it.
 
@@ -12,8 +12,8 @@ questions about it.
   how healthy things are. Learning paths for developers, DevOps engineers and people new to Jenkins.
   Guided tours over real job pages, curated by admins or team leads.
 - **An optional AI assistant.** Ask about jobs, builds, failures and plugins, using your own
-  Anthropic, OpenAI, xAI Grok, DeepSeek or local model. Later, run a job from the chat after you
-  confirm it.
+  Anthropic, OpenAI, xAI Grok, DeepSeek or local model. When an administrator allows it, run a job
+  from the chat after you confirm it.
 
 Everything Concierge shows is computed for the person looking at it, from what they are already
 allowed to see. Onboarding works with no AI and sends nothing off the instance.

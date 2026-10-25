@@ -513,3 +513,55 @@
   font-size: 0.8rem;
 }
 
+
+.concierge-proposal {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--accent-color, #1d6a86);
+  border-radius: 8px;
+  background: var(--background, #fff);
+}
+
+.concierge-proposal__title {
+  margin: 0 !important;
+  font-weight: 700;
+}
+
+.concierge-proposal__params {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 0.75rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.concierge-proposal__params dt {
+  color: var(--text-color-secondary, #5c6370);
+}
+
+.concierge-proposal__params dd {
+  margin: 0;
+  font-family: var(--font-family-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+
+.concierge-proposal__none {
+  margin: 0 !important;
+  color: var(--text-color-secondary, #5c6370);
+}
+
+.concierge-proposal__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.concierge-proposal__status {
+  margin: 0 !important;
+  font-size: 0.9rem;
+}
+
+.concierge-proposal__status:empty {
+  display: none;
+}

@@ -35,6 +35,9 @@ public class AssistantEndpoint implements StaplerProxy {
     /** Session attribute holding the conversation so far. */
     static final String HISTORY = AssistantEndpoint.class.getName() + ".history";
 
+    /** Session attribute holding builds proposed and not yet confirmed. */
+    static final String PROPOSALS = AssistantEndpoint.class.getName() + ".proposals";
+
     /** How many past turns are sent back to the model with each question. */
     static final int HISTORY_TURNS = 12;
 
@@ -126,17 +129,18 @@ public class AssistantEndpoint implements StaplerProxy {
         if (key != null) {
             literals.add(key);
         }
+        HttpSession session = req.getSession(true);
+        List<Llm.Turn> history = history(session);
+        BuildProposals proposals = config.isAllowActions() ? proposals(session) : null;
         Redactor redactor = new Redactor(literals);
         Llm.Client client =
                 clientFactory.create(config.getProvider(), config.getEffectiveBaseUrl(), config.getModel(), key);
         Assistant assistant = new Assistant(
                 config,
                 client,
-                new AssistantTools(config, redactor),
+                new AssistantTools(config, redactor, proposals),
                 config.getProvider().name() + "/" + config.getModel() + (userKey != null ? " (user key)" : ""));
 
-        HttpSession session = req.getSession(true);
-        List<Llm.Turn> history = history(session);
         try {
             Assistant.Answer answer = assistant.ask(redactor.redact(text), cleanPage(page), history);
             List<Llm.Turn> updated = new ArrayList<>(history);
@@ -152,6 +156,12 @@ public class AssistantEndpoint implements StaplerProxy {
             result.put("status", "ok");
             result.put("answer", answer.text());
             result.put("tools", answer.toolsUsed());
+            List<Object> proposed = new ArrayList<>();
+            if (proposals != null) {
+                proposals.takeMadeNow().forEach(p -> proposed.add(p.toJson()));
+                session.setAttribute(PROPOSALS, proposals);
+            }
+            result.put("proposals", proposed);
             return json(200, result);
         } catch (Llm.ProviderException e) {
             LOGGER.log(Level.WARNING, "AI provider error {0}: {1}", new Object[] {e.getStatus(), e.getMessage()});
@@ -167,6 +177,52 @@ public class AssistantEndpoint implements StaplerProxy {
                     e.getClass().getSimpleName());
             return error(502, Messages.Assistant_providerError(0));
         }
+    }
+
+    /**
+     * Starts a build the assistant proposed, once the person clicks "Run it". Everything is checked
+     * again here; see {@link BuildProposals#confirm}.
+     */
+    @POST
+    public HttpResponse doConfirm(StaplerRequest2 req, @QueryParameter String id) {
+        Jenkins.get().checkPermission(ConciergePermissions.ASSISTANT);
+        HttpSession session = req.getSession(false);
+        BuildProposals proposals = session == null ? null : (BuildProposals) session.getAttribute(PROPOSALS);
+        String userId = BuildProposals.currentUserId();
+        if (proposals == null) {
+            return error(404, Messages.Action_unknownProposal());
+        }
+        try {
+            hudson.model.Queue.Item item = proposals.confirm(AssistantConfiguration.get(), id);
+            session.setAttribute(PROPOSALS, proposals);
+            String job =
+                    item.task instanceof hudson.model.Job<?, ?> j ? j.getFullName() : item.task.getFullDisplayName();
+            Assistant.AUDIT.info(() -> "build-confirmed user=" + userId + " job=" + job);
+            String url = item.task instanceof hudson.model.Job<?, ?> j ? JobRef.url(j) : "";
+            return json(200, Map.of("status", "ok", "job", job, "url", url));
+        } catch (BuildProposals.ProposalException e) {
+            Assistant.AUDIT.info(() -> "build-refused user=" + userId + " reason=" + e.getMessage());
+            return error(409, e.getMessage());
+        }
+    }
+
+    /** Drops a proposed build. */
+    @POST
+    public HttpResponse doCancel(StaplerRequest2 req, @QueryParameter String id) {
+        Jenkins.get().checkPermission(ConciergePermissions.ASSISTANT);
+        HttpSession session = req.getSession(false);
+        BuildProposals proposals = session == null ? null : (BuildProposals) session.getAttribute(PROPOSALS);
+        if (proposals != null && proposals.cancel(id)) {
+            session.setAttribute(PROPOSALS, proposals);
+            Assistant.AUDIT.info(() -> "build-cancelled user=" + BuildProposals.currentUserId());
+        }
+        return json(200, Map.of("status", "ok"));
+    }
+
+    @NonNull
+    static BuildProposals proposals(@NonNull HttpSession session) {
+        Object stored = session.getAttribute(PROPOSALS);
+        return stored instanceof BuildProposals p ? p : new BuildProposals();
     }
 
     /** Forgets the conversation. */

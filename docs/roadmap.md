@@ -39,7 +39,9 @@ See the assistant section of [usage.md](usage.md).
 
 - Optional routing through Cloudflare AI Gateway, set by an admin.
 
-## Phase 3: actions with confirmation
+## Phase 3: actions with confirmation (done)
+
+See "Starting builds from the assistant" in [usage.md](usage.md).
 
 - Run or rebuild a job from the chat.
 - Off by default, limited to jobs an admin allows, confirmed by the user every time.

@@ -173,11 +173,77 @@
 
     var busy = false;
 
-    function addMessage(role, text, tools) {
+    /**
+     * A confirmation card for a build the assistant proposed. Everything on it comes from the
+     * server's structured proposal, never from the model's text, and nothing runs until "Run it".
+     */
+    function proposalCard(proposal) {
+      var card = el("div", "concierge-proposal");
+      card.setAttribute("role", "group");
+      var heading = proposal.kind === "rebuild"
+        ? "Run " + proposal.job + " again" + (proposal.fromBuild ? " (like #" + proposal.fromBuild + ")" : "") + "?"
+        : "Start a build of " + proposal.job + "?";
+      card.setAttribute("aria-label", heading);
+      card.appendChild(el("p", "concierge-proposal__title", heading));
+      if (proposal.parameters && proposal.parameters.length) {
+        var list = el("dl", "concierge-proposal__params");
+        proposal.parameters.forEach(function (parameter) {
+          list.appendChild(el("dt", null, parameter.name));
+          list.appendChild(el("dd", null, parameter.value));
+        });
+        card.appendChild(list);
+      } else {
+        card.appendChild(el("p", "concierge-proposal__none", "No parameters."));
+      }
+      var actions = el("div", "concierge-proposal__actions");
+      var run = el("button", "jenkins-button jenkins-button--primary", "Run it");
+      run.type = "button";
+      var cancel = el("button", "jenkins-button", "Cancel");
+      cancel.type = "button";
+      var status = el("p", "concierge-proposal__status");
+      status.setAttribute("role", "status");
+      actions.appendChild(run);
+      actions.appendChild(cancel);
+      card.appendChild(actions);
+      card.appendChild(status);
+
+      function done(text, link) {
+        actions.remove();
+        status.textContent = text;
+        if (link) {
+          status.appendChild(document.createTextNode(" "));
+          var a = el("a", null, "Open the job");
+          a.href = root + "/" + link;
+          status.appendChild(a);
+        }
+      }
+
+      run.addEventListener("click", function () {
+        run.disabled = true;
+        cancel.disabled = true;
+        request("confirm", { id: proposal.id })
+          .then(function (body) {
+            done("Queued. You started this build.", body.url);
+          })
+          .catch(function (error) {
+            done(error.message);
+          });
+      });
+      cancel.addEventListener("click", function () {
+        request("cancel", { id: proposal.id }).catch(function () {});
+        done("Cancelled. Nothing ran.");
+      });
+      return card;
+    }
+
+    function addMessage(role, text, tools, proposals) {
       empty.hidden = true;
       var message = el("div", "concierge-chat__message concierge-chat__message--" + role);
       if (role === "assistant") {
         renderRich(text, message);
+        (proposals || []).forEach(function (proposal) {
+          message.appendChild(proposalCard(proposal));
+        });
         if (tools && tools.length) {
           var unique = tools.filter(function (name, i) {
             return tools.indexOf(name) === i;
@@ -208,7 +274,7 @@
       request("ask", { question: question, page: currentPage() })
         .then(function (body) {
           pending.remove();
-          addMessage("assistant", body.answer, body.tools);
+          addMessage("assistant", body.answer, body.tools, body.proposals);
         })
         .catch(function (error) {
           pending.remove();
