@@ -1,6 +1,7 @@
 /*
- * Concierge assistant chat. Adds an "Ask Concierge" button and panel to every page for people who
- * may use the assistant, or runs inside #concierge-chat-page on the full-page view.
+ * Concierge assistant chat. Adds a bell launcher and a floating, resizable chat window to every
+ * page for people who may use the assistant, or runs inside #concierge-chat-page on the full-page
+ * view.
  *
  * Answers are rendered from plain text into DOM nodes: paragraphs, "- " lists, ``` code blocks,
  * `inline code` and **bold**. Nothing is ever parsed as HTML (docs/security-design.md, rule 6).
@@ -12,6 +13,11 @@
   var root = (head && head.getAttribute("data-rooturl")) || "";
   var base = root + "/concierge/assistant/";
   var OPEN_KEY = "concierge.assistant.open";
+  var SIZE_KEY = "concierge.assistant.size";
+  var CAUTION = "AI can be confidently wrong: think critically and check anything important before acting on it.";
+  var SVG = "http://www.w3.org/2000/svg";
+
+  // ------------------------------------------------------------------ small helpers
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -23,6 +29,101 @@
     }
     return node;
   }
+
+  /** Icons are a few SVG shapes, built with DOM calls. */
+  var ICONS = {
+    bell: [["circle", { cx: 12, cy: 5.2, r: 1.6 }],
+      ["path", { d: "M12 7.6c-4.1 0-7.4 3.1-7.7 7.1h15.4c-.3-4-3.6-7.1-7.7-7.1z" }],
+      ["rect", { x: 2.5, y: 15.8, width: 19, height: 2.6, rx: 1.3 }]],
+    send: [["path", { d: "M3.4 20.4 21 12 3.4 3.6l-.1 6.5 12.6 1.9-12.6 1.9z" }]],
+    plus: [["path", { d: "M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" }]],
+    expand: [["path", { d: "M4 4h7v2H7.4l4.3 4.3-1.4 1.4L6 7.4V11H4zm16 16h-7v-2h3.6l-4.3-4.3 1.4-1.4 4.3 4.3V13h2z" }]],
+    collapse: [["path", { d: "M11 13v7H9v-3.6l-4.3 4.3-1.4-1.4L7.6 15H4v-2zm2-2V4h2v3.6l4.3-4.3 1.4 1.4L16.4 9H20v2z" }]],
+    external: [["path", { d: "M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14zM5 5h6v2H7v10h10v-4h2v6H5z" }]],
+    close: [["path", { d: "m6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4z" }]],
+    copy: [["path", { d: "M8 3h11v13h-2V5H8zM5 7h11v14H5zm2 2v10h7V9z" }]],
+    check: [["path", { d: "m9.5 16.2-4.2-4.2-1.4 1.4 5.6 5.6L21 7.4 19.6 6z" }]],
+  };
+
+  function icon(name) {
+    var svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    ICONS[name].forEach(function (shape) {
+      var node = document.createElementNS(SVG, shape[0]);
+      Object.keys(shape[1]).forEach(function (key) {
+        node.setAttribute(key, String(shape[1][key]));
+      });
+      svg.appendChild(node);
+    });
+    return svg;
+  }
+
+  function iconButton(name, label, className) {
+    var button = el("button", "concierge-icon-button" + (className ? " " + className : ""));
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    button.appendChild(icon(name));
+    return button;
+  }
+
+  function copyText(text, button) {
+    function confirmCopied() {
+      button.replaceChildren(icon("check"));
+      button.setAttribute("aria-label", "Copied");
+      window.setTimeout(function () {
+        button.replaceChildren(icon("copy"));
+        button.setAttribute("aria-label", "Copy");
+      }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(confirmCopied, function () {});
+    }
+  }
+
+  function read(kind, key) {
+    try {
+      var store = window[kind];
+      return store ? store.getItem(key) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function write(kind, key, value) {
+    try {
+      var store = window[kind];
+      if (store) {
+        store.setItem(key, value);
+      }
+    } catch (e) {
+      // Storage blocked: the setting simply is not remembered.
+    }
+  }
+
+  // ------------------------------------------------------------------ dates
+
+  function timeOf(ms) {
+    return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  function dayOf(ms) {
+    var day = new Date(ms);
+    var today = new Date();
+    var yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (day.toDateString() === today.toDateString()) {
+      return "Today";
+    }
+    if (day.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+    return day.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  }
+
+  // ------------------------------------------------------------------ rendering answers
 
   function inline(parent, text) {
     var pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*)/g;
@@ -76,19 +177,35 @@
     });
   }
 
+  function codeBlock(container, part) {
+    var language = (/^([A-Za-z0-9_+.-]*)\n/.exec(part) || [null, ""])[1];
+    var code = part.replace(/^[A-Za-z0-9_+.-]*\n/, "").replace(/\n$/, "");
+    var block = el("div", "concierge-code");
+    var bar = el("div", "concierge-code__bar");
+    bar.appendChild(el("span", "concierge-code__lang", language || "text"));
+    var copy = iconButton("copy", "Copy", "concierge-code__copy");
+    copy.addEventListener("click", function () {
+      copyText(code, copy);
+    });
+    bar.appendChild(copy);
+    var pre = el("pre", "concierge-code__body");
+    pre.appendChild(el("code", null, code));
+    block.appendChild(bar);
+    block.appendChild(pre);
+    container.appendChild(block);
+  }
+
   function renderRich(text, container) {
-    var parts = String(text).split("```");
-    parts.forEach(function (part, index) {
+    String(text).split("```").forEach(function (part, index) {
       if (index % 2 === 1) {
-        var code = part.replace(/^[A-Za-z0-9_+.-]*\n/, "").replace(/\n$/, "");
-        var pre = el("pre", "concierge-chat__code");
-        pre.appendChild(el("code", null, code));
-        container.appendChild(pre);
+        codeBlock(container, part);
       } else if (part.trim() !== "") {
         prose(container, part);
       }
     });
   }
+
+  // ------------------------------------------------------------------ server
 
   function request(path, params) {
     var headers = { Accept: "application/json" };
@@ -111,8 +228,7 @@
         })
         .then(function (body) {
           if (!response.ok) {
-            var error = new Error(body.message || "The assistant could not answer (HTTP " + response.status + ").");
-            throw error;
+            throw new Error(body.message || "The assistant could not answer (HTTP " + response.status + ").");
           }
           return body;
         });
@@ -127,51 +243,120 @@
     return path.replace(/^\/+/, "");
   }
 
-  /** A chat bound to a container: message log, input, and the calls to the server. */
+  // ------------------------------------------------------------------ the chat
+
+  /** A chat bound to a container: message list, composer, and the calls to the server. */
   function Chat(container) {
+    var userName = "";
+    var lastDay = null;
+    var busy = false;
+
     var log = el("div", "concierge-chat__log");
     log.setAttribute("role", "log");
     log.setAttribute("aria-live", "polite");
+
+    var composer = el("form", "concierge-composer");
+    var input = el("textarea", "concierge-composer__input");
+    input.rows = 1;
+    input.maxLength = 4000;
+    input.placeholder = "Ask about a job, a build or a failure";
+    input.setAttribute("aria-label", "Question for the Concierge assistant");
+    var sendButton = iconButton("send", "Send", "concierge-composer__send");
+    sendButton.type = "submit";
+    sendButton.disabled = true;
+    composer.appendChild(input);
+    composer.appendChild(sendButton);
+
     var empty = el("div", "concierge-chat__empty");
-    empty.appendChild(el("p", "concierge-chat__empty-title", "Ask anything about this Jenkins."));
-    var examples = el("ul", "concierge-chat__examples");
+    var hero = el("div", "concierge-chat__hero");
+    hero.appendChild(icon("bell"));
+    empty.appendChild(hero);
+    empty.appendChild(el("p", "concierge-chat__empty-title", "How can I help?"));
+    empty.appendChild(el("p", "concierge-chat__empty-text", "Ask about jobs, builds and failures on this Jenkins."));
+    var examples = el("div", "concierge-chat__examples");
     [
       "What is failing right now, and why?",
       "Explain what this job does.",
       "Why did the last build fail?",
-      "Which agents are offline?"
+      "Which agents are offline?",
     ].forEach(function (example) {
-      var item = el("li");
       var button = el("button", "concierge-chat__example", example);
       button.type = "button";
       button.addEventListener("click", function () {
         input.value = example;
+        resize();
         send();
       });
-      item.appendChild(button);
-      examples.appendChild(item);
+      examples.appendChild(button);
     });
     empty.appendChild(examples);
     log.appendChild(empty);
 
-    var form = el("form", "concierge-chat__form");
-    var input = el("textarea", "jenkins-input concierge-chat__input");
-    input.rows = 2;
-    input.maxLength = 4000;
-    input.placeholder = "Ask about a job, a build or a failure";
-    input.setAttribute("aria-label", "Question for the Concierge assistant");
-    var sendButton = el("button", "jenkins-button jenkins-button--primary", "Ask");
-    sendButton.type = "submit";
-    form.appendChild(input);
-    form.appendChild(sendButton);
-
-    var note = el("p", "concierge-chat__note", "Uses only what you can see in Jenkins. AI can be confidently wrong: think critically and check anything important before acting on it.");
+    var note = el("p", "concierge-chat__note", "Uses only what you can see in Jenkins. " + CAUTION);
 
     container.appendChild(log);
-    container.appendChild(form);
+    container.appendChild(composer);
     container.appendChild(note);
 
-    var busy = false;
+    function resize() {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 180) + "px";
+      sendButton.disabled = busy || input.value.trim() === "";
+    }
+
+    function scrollDown() {
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function daySeparator(at) {
+      var day = at ? dayOf(at) : null;
+      if (day && day !== lastDay) {
+        lastDay = day;
+        var separator = el("div", "concierge-chat__day");
+        separator.appendChild(el("span", null, day));
+        log.appendChild(separator);
+      }
+    }
+
+    function avatar(role) {
+      var node = el("div", "concierge-avatar concierge-avatar--" + role);
+      node.setAttribute("aria-hidden", "true");
+      if (role === "assistant") {
+        node.appendChild(icon("bell"));
+      } else {
+        node.textContent = (userName || "You")
+          .split(/\s+/)
+          .map(function (word) {
+            return word.charAt(0);
+          })
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
+      }
+      return node;
+    }
+
+    function messageRow(role, at) {
+      empty.hidden = true;
+      daySeparator(at);
+      var row = el("div", "concierge-msg concierge-msg--" + role);
+      row.appendChild(avatar(role));
+      var column = el("div", "concierge-msg__column");
+      var meta = el("div", "concierge-msg__meta");
+      meta.appendChild(el("span", "concierge-msg__name", role === "user" ? userName || "You" : "Concierge"));
+      if (at) {
+        var time = el("time", "concierge-msg__time", timeOf(at));
+        time.dateTime = new Date(at).toISOString();
+        time.title = new Date(at).toLocaleString();
+        meta.appendChild(time);
+      }
+      column.appendChild(meta);
+      var bubble = el("div", "concierge-msg__bubble");
+      column.appendChild(bubble);
+      row.appendChild(column);
+      log.appendChild(row);
+      return { row: row, column: column, bubble: bubble };
+    }
 
     /**
      * A confirmation card for a build the assistant proposed. Everything on it comes from the
@@ -236,12 +421,12 @@
       return card;
     }
 
-    function usageLine(usage) {
+    function usageText(usage) {
       if (!usage || (!usage.inputTokens && !usage.outputTokens)) {
         return null;
       }
       var parts = [
-        Number(usage.inputTokens).toLocaleString() + " in / " + Number(usage.outputTokens).toLocaleString() + " out tokens"
+        Number(usage.inputTokens).toLocaleString() + " in / " + Number(usage.outputTokens).toLocaleString() + " out tokens",
       ];
       if (usage.ownKey) {
         parts.push("your key");
@@ -251,36 +436,69 @@
       } else {
         parts.push("price unknown");
       }
-      return el("p", "concierge-chat__usage", parts.join(" \u00b7 "));
+      return parts.join(" · ");
     }
 
-    function addMessage(role, text, tools, proposals, usage) {
-      empty.hidden = true;
-      var message = el("div", "concierge-chat__message concierge-chat__message--" + role);
-      if (role === "assistant") {
-        renderRich(text, message);
-        (proposals || []).forEach(function (proposal) {
-          message.appendChild(proposalCard(proposal));
-        });
-        if (tools && tools.length) {
-          var unique = tools.filter(function (name, i) {
+    function addUser(text, at) {
+      messageRow("user", at).bubble.textContent = text;
+      scrollDown();
+    }
+
+    function addAssistant(text, at, tools, proposals, usage) {
+      var parts = messageRow("assistant", at);
+      renderRich(text, parts.bubble);
+      (proposals || []).forEach(function (proposal) {
+        parts.bubble.appendChild(proposalCard(proposal));
+      });
+      var footer = el("div", "concierge-msg__footer");
+      if (tools && tools.length) {
+        var chips = el("div", "concierge-msg__tools");
+        chips.appendChild(el("span", "concierge-msg__tools-label", "Looked at"));
+        tools
+          .filter(function (name, i) {
             return tools.indexOf(name) === i;
+          })
+          .forEach(function (name) {
+            chips.appendChild(el("span", "concierge-chip", name.replace(/_/g, " ")));
           });
-          message.appendChild(el("p", "concierge-chat__tools", "Looked at: " + unique.join(", ").replace(/_/g, " ")));
-        }
-        var line = usageLine(usage);
-        if (line) {
-          message.appendChild(line);
-        }
-      } else if (role === "error") {
-        message.textContent = text;
-        message.setAttribute("role", "alert");
-      } else {
-        message.textContent = text;
+        footer.appendChild(chips);
       }
-      log.appendChild(message);
-      log.scrollTop = log.scrollHeight;
-      return message;
+      var usageLine = usageText(usage);
+      if (usageLine) {
+        footer.appendChild(el("span", "concierge-msg__usage", usageLine));
+      }
+      var copy = iconButton("copy", "Copy", "concierge-msg__copy");
+      copy.addEventListener("click", function () {
+        copyText(text, copy);
+      });
+      footer.appendChild(copy);
+      parts.column.appendChild(footer);
+      scrollDown();
+    }
+
+    function addError(text) {
+      var parts = messageRow("assistant", Date.now());
+      parts.row.classList.add("concierge-msg--error");
+      parts.bubble.textContent = text;
+      parts.bubble.setAttribute("role", "alert");
+      scrollDown();
+    }
+
+    function typing() {
+      var row = el("div", "concierge-msg concierge-msg--assistant concierge-msg--typing");
+      row.appendChild(avatar("assistant"));
+      var bubble = el("div", "concierge-msg__bubble");
+      var dots = el("span", "concierge-typing");
+      dots.setAttribute("aria-hidden", "true");
+      for (var i = 0; i < 3; i++) {
+        dots.appendChild(el("span"));
+      }
+      bubble.appendChild(dots);
+      bubble.appendChild(el("span", "concierge-visually-hidden", "Concierge is looking into it"));
+      row.appendChild(bubble);
+      log.appendChild(row);
+      scrollDown();
+      return row;
     }
 
     function send() {
@@ -289,32 +507,33 @@
         return;
       }
       busy = true;
-      sendButton.disabled = true;
       input.value = "";
-      addMessage("user", question);
-      var pending = addMessage("pending", "Looking into it...");
+      resize();
+      addUser(question, Date.now());
+      var indicator = typing();
       request("ask", { question: question, page: currentPage() })
         .then(function (body) {
-          pending.remove();
-          addMessage("assistant", body.answer, body.tools, body.proposals, body.usage);
+          indicator.remove();
+          addAssistant(body.answer, body.at || Date.now(), body.tools, body.proposals, body.usage);
         })
         .catch(function (error) {
-          pending.remove();
-          addMessage("error", error.message);
+          indicator.remove();
+          addError(error.message);
         })
         .then(function () {
           busy = false;
-          sendButton.disabled = false;
+          resize();
           input.focus();
         });
     }
 
-    form.addEventListener("submit", function (event) {
+    composer.addEventListener("submit", function (event) {
       event.preventDefault();
       send();
     });
+    input.addEventListener("input", resize);
     input.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" && !event.shiftKey) {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         send();
       }
@@ -322,20 +541,27 @@
 
     this.load = function () {
       return request("history").then(function (body) {
+        userName = body.user || "";
         (body.turns || []).forEach(function (turn) {
-          addMessage(turn.role === "user" ? "user" : "assistant", turn.text);
+          if (turn.role === "user") {
+            addUser(turn.text, turn.at);
+          } else {
+            addAssistant(turn.text, turn.at);
+          }
         });
         if (body.provider) {
-          note.textContent = "Answers come from " + body.provider + ". Uses only what you can see in Jenkins. AI can be confidently wrong: think critically and check anything important before acting on it.";
+          note.textContent = "Answers come from " + body.provider + ". " + CAUTION;
         }
+        return body;
       });
     };
 
     this.reset = function () {
       return request("reset", {}).then(function () {
-        Array.prototype.slice.call(log.querySelectorAll(".concierge-chat__message")).forEach(function (m) {
+        Array.prototype.slice.call(log.querySelectorAll(".concierge-msg, .concierge-chat__day")).forEach(function (m) {
           m.remove();
         });
+        lastDay = null;
         empty.hidden = false;
       });
     };
@@ -345,65 +571,180 @@
     };
   }
 
-  function remember(open) {
+  // ------------------------------------------------------------------ the floating window
+
+  var MIN_WIDTH = 340;
+  var MIN_HEIGHT = 420;
+
+  /** Room above the window's bottom edge, which moves up to clear the launcher and the footer. */
+  var bottomEdge = 88;
+
+  function availableHeight() {
+    return Math.max(MIN_HEIGHT, window.innerHeight - bottomEdge - 16);
+  }
+
+  function clampSize(width, height) {
+    return {
+      width: Math.round(Math.max(MIN_WIDTH, Math.min(width, window.innerWidth - 32))),
+      height: Math.round(Math.max(MIN_HEIGHT, Math.min(height, availableHeight()))),
+    };
+  }
+
+  function savedSize() {
     try {
-      window.sessionStorage.setItem(OPEN_KEY, open ? "1" : "0");
+      var saved = JSON.parse(read("localStorage", SIZE_KEY) || "null");
+      if (saved && saved.width && saved.height) {
+        return saved;
+      }
     } catch (e) {
-      // Storage blocked: the panel just starts closed on the next page.
+      // Not JSON: use the default.
     }
+    return { width: 420, height: 620 };
   }
 
-  function wasOpen() {
-    try {
-      return window.sessionStorage.getItem(OPEN_KEY) === "1";
-    } catch (e) {
-      return false;
+  function initWindow() {
+    var launcher = el("button", "concierge-launcher");
+    launcher.type = "button";
+    launcher.setAttribute("aria-expanded", "false");
+    launcher.setAttribute("aria-controls", "concierge-window");
+    launcher.setAttribute("aria-label", "Ask Concierge about this page");
+    var bell = icon("bell");
+    bell.classList.add("concierge-launcher__bell");
+    var cross = icon("close");
+    cross.classList.add("concierge-launcher__close");
+    launcher.appendChild(bell);
+    launcher.appendChild(cross);
+    var tooltip = el("span", "concierge-launcher__tooltip", "Ask Concierge about this page");
+    tooltip.setAttribute("aria-hidden", "true");
+    launcher.appendChild(tooltip);
+
+    var win = el("section", "concierge-window");
+    win.id = "concierge-window";
+    win.setAttribute("role", "dialog");
+    win.setAttribute("aria-label", "Concierge assistant");
+    win.hidden = true;
+
+    var handle = el("div", "concierge-window__resize");
+    handle.setAttribute("role", "separator");
+    handle.setAttribute("aria-label", "Resize the assistant. Drag, or use the arrow keys.");
+    handle.title = "Drag to resize";
+    handle.tabIndex = 0;
+    win.appendChild(handle);
+
+    var header = el("header", "concierge-window__header");
+    var identity = el("div", "concierge-window__identity");
+    var badge = el("div", "concierge-avatar concierge-avatar--assistant concierge-avatar--large");
+    badge.setAttribute("aria-hidden", "true");
+    badge.appendChild(icon("bell"));
+    identity.appendChild(badge);
+    var titles = el("div");
+    titles.appendChild(el("h2", "concierge-window__title", "Concierge"));
+    var subtitle = el("p", "concierge-window__subtitle", "Your guide to this Jenkins");
+    titles.appendChild(subtitle);
+    identity.appendChild(titles);
+    header.appendChild(identity);
+    var actions = el("div", "concierge-window__actions");
+    var newChat = iconButton("plus", "New conversation");
+    var expand = iconButton("expand", "Expand");
+    var fullPage = el("a", "concierge-icon-button");
+    fullPage.href = base;
+    fullPage.setAttribute("aria-label", "Open as a full page");
+    fullPage.title = "Open as a full page";
+    fullPage.appendChild(icon("external"));
+    var close = iconButton("close", "Close");
+    [newChat, expand, fullPage, close].forEach(function (button) {
+      actions.appendChild(button);
+    });
+    header.appendChild(actions);
+    win.appendChild(header);
+
+    var body = el("div", "concierge-chat concierge-chat--window");
+    win.appendChild(body);
+    document.body.appendChild(win);
+    document.body.appendChild(launcher);
+
+    var chat = new Chat(body);
+    var loaded = false;
+    var expanded = false;
+    var size = savedSize();
+
+    function applySize() {
+      if (expanded) {
+        win.style.width = "min(960px, calc(100vw - 32px))";
+        win.style.height = availableHeight() + "px";
+      } else {
+        // Fit what the person chose to the room there is now, without forgetting what they chose.
+        var shown = clampSize(size.width, size.height);
+        win.style.width = shown.width + "px";
+        win.style.height = shown.height + "px";
+      }
+      expand.replaceChildren(icon(expanded ? "collapse" : "expand"));
+      expand.setAttribute("aria-label", expanded ? "Restore size" : "Expand");
+      expand.title = expanded ? "Restore size" : "Expand";
     }
-  }
 
-  var SVG = "http://www.w3.org/2000/svg";
+    function setSize(width, height) {
+      expanded = false;
+      size = clampSize(width, height);
+      applySize();
+      write("localStorage", SIZE_KEY, JSON.stringify(size));
+    }
 
-  /** A concierge's service bell, drawn with DOM calls like everything else here. */
-  function bellIcon() {
-    var svg = document.createElementNS(SVG, "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("focusable", "false");
-    var button = document.createElementNS(SVG, "circle");
-    button.setAttribute("cx", "12");
-    button.setAttribute("cy", "5.2");
-    button.setAttribute("r", "1.6");
-    var dome = document.createElementNS(SVG, "path");
-    dome.setAttribute("d", "M12 7.6c-4.1 0-7.4 3.1-7.7 7.1h15.4c-.3-4-3.6-7.1-7.7-7.1z");
-    var base = document.createElementNS(SVG, "rect");
-    base.setAttribute("x", "2.5");
-    base.setAttribute("y", "15.8");
-    base.setAttribute("width", "19");
-    base.setAttribute("height", "2.6");
-    base.setAttribute("rx", "1.3");
-    svg.appendChild(button);
-    svg.appendChild(dome);
-    svg.appendChild(base);
-    return svg;
-  }
+    // Dragging the top-left corner grows the window up and to the left, since it is anchored to
+    // the bottom-right corner of the screen.
+    handle.addEventListener("pointerdown", function (event) {
+      event.preventDefault();
+      try {
+        handle.setPointerCapture(event.pointerId);
+      } catch (e) {
+        // A pointer the browser does not consider active cannot be captured; dragging still works
+        // while it stays over the handle.
+      }
+      var start = { x: event.clientX, y: event.clientY, width: win.offsetWidth, height: win.offsetHeight };
+      win.classList.add("concierge-window--resizing");
+      function move(e) {
+        setSize(start.width + (start.x - e.clientX), start.height + (start.y - e.clientY));
+      }
+      function up() {
+        win.classList.remove("concierge-window--resizing");
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", up);
+        handle.removeEventListener("pointercancel", up);
+      }
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", up);
+      handle.addEventListener("pointercancel", up);
+    });
+    handle.addEventListener("keydown", function (event) {
+      var step = event.shiftKey ? 80 : 20;
+      var delta = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[event.key];
+      if (delta) {
+        event.preventDefault();
+        setSize(win.offsetWidth + delta[0], win.offsetHeight + delta[1]);
+      }
+    });
 
-  /**
-   * Keeps the launcher above Jenkins' page footer (version, REST API) when the footer scrolls into
-   * view, instead of sitting on top of it.
-   */
-  function keepClearOfFooter(launcher) {
+    // Keep the launcher, and the window above it, clear of Jenkins' page footer (version, REST
+    // API) when the footer scrolls into view.
     var footer = document.querySelector("footer.page-footer, footer");
-    if (!footer) {
-      return;
-    }
     var scheduled = false;
     function place() {
       scheduled = false;
-      var rect = footer.getBoundingClientRect();
-      // Jenkins hides the footer on small screens; a hidden footer reports a top of 0.
-      var shown = rect.height > 0 && footer.getClientRects().length > 0;
-      var overlap = shown ? Math.max(0, window.innerHeight - rect.top) : 0;
-      launcher.style.bottom = "calc(" + (20 + overlap) + "px + env(safe-area-inset-bottom, 0px))";
+      var lift = 0;
+      if (footer) {
+        var rect = footer.getBoundingClientRect();
+        // Jenkins hides the footer on small screens; a hidden footer reports a top of 0.
+        if (rect.height > 0 && footer.getClientRects().length > 0) {
+          lift = Math.max(0, window.innerHeight - rect.top);
+        }
+      }
+      launcher.style.bottom = "calc(" + (20 + lift) + "px + env(safe-area-inset-bottom, 0px))";
+      bottomEdge = 88 + lift;
+      win.style.bottom = "calc(" + bottomEdge + "px + env(safe-area-inset-bottom, 0px))";
+      win.style.maxHeight = availableHeight() + "px";
+      if (!win.hidden) {
+        applySize();
+      }
     }
     function schedule() {
       if (!scheduled) {
@@ -412,83 +753,69 @@
       }
     }
     window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    place();
-  }
-
-  function initPanel() {
-    var launcher = el("button", "concierge-launcher");
-    launcher.type = "button";
-    launcher.setAttribute("aria-expanded", "false");
-    launcher.setAttribute("aria-label", "Ask Concierge about this page");
-    launcher.appendChild(bellIcon());
-    // Shown on hover and keyboard focus; screen readers get the same words from aria-label.
-    var tooltip = el("span", "concierge-launcher__tooltip", "Ask Concierge about this page");
-    tooltip.setAttribute("aria-hidden", "true");
-    launcher.appendChild(tooltip);
-
-    var panel = el("aside", "concierge-panel");
-    panel.setAttribute("aria-label", "Concierge assistant");
-    panel.hidden = true;
-
-    var header = el("header", "concierge-panel__header");
-    header.appendChild(el("h2", "concierge-panel__title", "Concierge"));
-    var actions = el("div", "concierge-panel__actions");
-    var reset = el("button", "jenkins-button jenkins-button--tertiary", "New conversation");
-    reset.type = "button";
-    var full = el("a", "jenkins-button jenkins-button--tertiary", "Full page");
-    full.href = base;
-    var close = el("button", "jenkins-button jenkins-button--tertiary", "Close");
-    close.type = "button";
-    close.setAttribute("aria-label", "Close the assistant");
-    actions.appendChild(reset);
-    actions.appendChild(full);
-    actions.appendChild(close);
-    header.appendChild(actions);
-    panel.appendChild(header);
-
-    var body = el("div", "concierge-chat concierge-chat--panel");
-    panel.appendChild(body);
-    document.body.appendChild(panel);
-    document.body.appendChild(launcher);
-    keepClearOfFooter(launcher);
-
-    var chat = new Chat(body);
-    var loaded = false;
+    window.addEventListener("resize", function () {
+      schedule();
+      if (!win.hidden) {
+        applySize();
+      }
+    });
 
     function open() {
-      panel.hidden = false;
-      launcher.hidden = true;
+      win.hidden = false;
+      launcher.classList.add("concierge-launcher--open");
       launcher.setAttribute("aria-expanded", "true");
-      remember(true);
+      launcher.setAttribute("aria-label", "Close the assistant");
+      applySize();
+      place();
+      write("sessionStorage", OPEN_KEY, "1");
       if (!loaded) {
         loaded = true;
-        chat.load().catch(function () {
-          loaded = false;
-        });
+        chat
+          .load()
+          .then(function (history) {
+            if (history.provider) {
+              subtitle.textContent = history.provider;
+            }
+          })
+          .catch(function () {
+            loaded = false;
+          });
       }
       chat.focus();
     }
 
     function hide() {
-      panel.hidden = true;
-      launcher.hidden = false;
+      win.hidden = true;
+      launcher.classList.remove("concierge-launcher--open");
       launcher.setAttribute("aria-expanded", "false");
-      remember(false);
+      launcher.setAttribute("aria-label", "Ask Concierge about this page");
+      write("sessionStorage", OPEN_KEY, "0");
       launcher.focus();
     }
 
-    launcher.addEventListener("click", open);
-    close.addEventListener("click", hide);
-    reset.addEventListener("click", function () {
-      chat.reset();
+    launcher.addEventListener("click", function () {
+      if (win.hidden) {
+        open();
+      } else {
+        hide();
+      }
     });
-    panel.addEventListener("keydown", function (event) {
+    close.addEventListener("click", hide);
+    newChat.addEventListener("click", function () {
+      chat.reset().then(chat.focus);
+    });
+    expand.addEventListener("click", function () {
+      expanded = !expanded;
+      applySize();
+    });
+    win.addEventListener("keydown", function (event) {
       if (event.key === "Escape") {
         hide();
       }
     });
-    if (wasOpen()) {
+
+    place();
+    if (read("sessionStorage", OPEN_KEY) === "1") {
       open();
     }
   }
@@ -501,7 +828,7 @@
       chat.focus();
       return;
     }
-    initPanel();
+    initWindow();
   }
 
   if (document.readyState === "loading") {

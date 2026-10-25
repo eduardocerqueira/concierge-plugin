@@ -32,9 +32,19 @@ final class Llm {
     /** One entry in the conversation. Serializable because past turns are kept in the HTTP session. */
     sealed interface Turn extends java.io.Serializable permits UserTurn, AssistantTurn, ToolResultsTurn {}
 
-    record UserTurn(String text) implements Turn {}
+    /** A question; {@code at} is when it was asked, in epoch milliseconds, or 0 when unknown. */
+    record UserTurn(String text, long at) implements Turn {
+        UserTurn(String text) {
+            this(text, 0);
+        }
+    }
 
-    record AssistantTurn(String text, List<ToolCall> toolCalls) implements Turn {}
+    /** A reply; {@code at} is when it was given, in epoch milliseconds, or 0 when unknown. */
+    record AssistantTurn(String text, List<ToolCall> toolCalls, long at) implements Turn {
+        AssistantTurn(String text, List<ToolCall> toolCalls) {
+            this(text, toolCalls, 0);
+        }
+    }
 
     record ToolResultsTurn(List<ToolResult> results) implements Turn {}
 

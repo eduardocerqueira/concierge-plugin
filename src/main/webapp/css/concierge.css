@@ -328,6 +328,30 @@
 
 /* ------------------------------------------------------------------ assistant */
 
+.concierge-window,
+.concierge-chat--page {
+  --cw-surface: var(--background, #fff);
+  --cw-raised: var(--card-background, var(--background, #fff));
+  --cw-border: var(--card-border-color, rgba(128, 128, 128, 0.22));
+  --cw-text: var(--text-color, #1f2328);
+  --cw-muted: var(--text-color-secondary, #5c6370);
+  --cw-accent: var(--accent-color, #1d6a86);
+  --cw-on-accent: #fff;
+  --cw-user: var(--accent-color, #1d6a86);
+  --cw-soft: rgba(128, 128, 128, 0.1);
+}
+
+.concierge-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The bell launcher. */
+
 .concierge-launcher {
   position: fixed;
   right: calc(20px + env(safe-area-inset-right, 0px));
@@ -342,15 +366,31 @@
   border: 2px solid var(--background, #fff);
   border-radius: 50%;
   background: var(--accent-color, #1d6a86);
-  color: var(--background, #fff);
+  color: #fff;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   cursor: pointer;
 }
 
 .concierge-launcher svg {
+  grid-area: 1 / 1;
   width: 1.6rem;
   height: 1.6rem;
   fill: currentColor;
+}
+
+.concierge-launcher__close {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+
+.concierge-launcher--open .concierge-launcher__bell {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.6);
+}
+
+.concierge-launcher--open .concierge-launcher__close {
+  opacity: 1;
+  transform: none;
 }
 
 .concierge-launcher:hover,
@@ -361,10 +401,6 @@
 .concierge-launcher:focus-visible {
   outline: 3px solid var(--focus-input-glow, rgba(29, 106, 134, 0.4));
   outline-offset: 3px;
-}
-
-.concierge-launcher[hidden] {
-  display: none;
 }
 
 .concierge-launcher__tooltip {
@@ -383,200 +419,622 @@
   transform: translate(4px, -50%);
 }
 
-.concierge-launcher:hover .concierge-launcher__tooltip,
-.concierge-launcher:focus-visible .concierge-launcher__tooltip {
+.concierge-launcher:not(.concierge-launcher--open):hover .concierge-launcher__tooltip,
+.concierge-launcher:not(.concierge-launcher--open):focus-visible .concierge-launcher__tooltip {
   opacity: 1;
   transform: translate(0, -50%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .concierge-launcher__tooltip {
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
-}
+/* The floating window. */
 
-.concierge-panel {
+.concierge-window {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   z-index: 2000;
   display: flex;
   flex-direction: column;
-  width: min(440px, 100vw);
-  border-left: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
-  background: var(--background, #fff);
-  color: var(--text-color, #1f2328);
-  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+  width: 420px;
+  height: 620px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 104px);
+  overflow: hidden;
+  border: 1px solid var(--cw-border);
+  border-radius: 18px;
+  background: var(--cw-surface);
+  color: var(--cw-text);
+  box-shadow: 0 24px 64px rgba(10, 20, 30, 0.28), 0 2px 8px rgba(10, 20, 30, 0.12);
+  transform-origin: bottom right;
 }
 
-.concierge-panel[hidden] {
+.concierge-window[hidden] {
   display: none;
 }
 
-.concierge-panel__header {
+.concierge-window--resizing {
+  user-select: none;
+}
+
+.concierge-window__resize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  border-radius: 18px 0 8px 0;
+  touch-action: none;
+}
+
+.concierge-window__resize::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 9px;
+  height: 9px;
+  border-top: 2px solid var(--cw-muted);
+  border-left: 2px solid var(--cw-muted);
+  border-radius: 3px 0 0 0;
+  opacity: 0.5;
+}
+
+.concierge-window__resize:hover::before,
+.concierge-window__resize:focus-visible::before {
+  opacity: 1;
+}
+
+.concierge-window__resize:focus-visible {
+  outline: 2px solid var(--cw-accent);
+}
+
+.concierge-window__header {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
   gap: 0.5rem;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
+  padding: 0.85rem 0.75rem 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--cw-border);
+  background: linear-gradient(180deg, var(--cw-soft), transparent);
 }
 
-.concierge-panel__title {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.concierge-panel__actions {
+.concierge-window__identity {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+  flex: 1;
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
 }
+
+/* Lets a long provider name end in an ellipsis instead of running under the buttons. */
+.concierge-window__identity > div {
+  min-width: 0;
+}
+
+.concierge-window__title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.concierge-window__subtitle {
+  margin: 0.1rem 0 0;
+  overflow: hidden;
+  color: var(--cw-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.concierge-window__actions {
+  display: flex;
+  flex: none;
+  gap: 0.1rem;
+}
+
+.concierge-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cw-muted, var(--text-color-secondary, #5c6370));
+  cursor: pointer;
+}
+
+.concierge-icon-button svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
+}
+
+.concierge-icon-button:hover,
+.concierge-icon-button:focus-visible {
+  background: var(--cw-soft, rgba(128, 128, 128, 0.12));
+  color: var(--cw-text, var(--text-color, #1f2328));
+}
+
+.concierge-icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Avatars. */
+
+.concierge-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.concierge-avatar svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.concierge-avatar--assistant {
+  background: var(--accent-color, #1d6a86);
+  color: #fff;
+}
+
+.concierge-avatar--user {
+  background: var(--cw-soft, rgba(128, 128, 128, 0.15));
+  color: var(--cw-text, var(--text-color, #1f2328));
+  border: 1px solid var(--cw-border, rgba(128, 128, 128, 0.25));
+}
+
+.concierge-avatar--large {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.concierge-avatar--large svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+/* The chat, in the window or on the full page. */
 
 .concierge-chat {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 0.75rem;
   min-height: 0;
 }
 
-.concierge-chat--panel {
-  flex: 1;
-  padding: 1rem;
-}
-
 .concierge-chat--page {
-  min-height: 60vh;
-  max-width: 900px;
+  min-height: 65vh;
+  max-width: 920px;
+  border: 1px solid var(--cw-border);
+  border-radius: 18px;
+  background: var(--cw-surface);
+  overflow: hidden;
 }
 
 .concierge-chat__log {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 12rem;
+  gap: 1.1rem;
+  min-height: 0;
+  padding: 1.25rem 1.1rem;
   overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 .concierge-chat--page .concierge-chat__log {
   max-height: 65vh;
 }
 
+.concierge-chat__empty {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+  margin: auto 0;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.concierge-chat__empty[hidden] {
+  display: none;
+}
+
+.concierge-chat__hero {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent-color, #1d6a86);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(29, 106, 134, 0.3);
+}
+
+.concierge-chat__hero svg {
+  width: 1.9rem;
+  height: 1.9rem;
+  fill: currentColor;
+}
+
 .concierge-chat__empty-title {
-  margin: 0 0 0.5rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.concierge-chat__empty-text {
+  margin: 0 0 0.6rem;
+  color: var(--cw-muted);
+  font-size: 0.88rem;
 }
 
 .concierge-chat__examples {
   display: grid;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .concierge-chat__example {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
-  border-radius: 8px;
-  background: var(--card-background, transparent);
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--cw-border);
+  border-radius: 12px;
+  background: var(--cw-raised);
   color: inherit;
   font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.35;
   text-align: left;
   cursor: pointer;
 }
 
 .concierge-chat__example:hover,
 .concierge-chat__example:focus-visible {
-  border-color: var(--accent-color, #1d6a86);
+  border-color: var(--cw-accent);
+  background: var(--cw-soft);
 }
 
-.concierge-chat__message {
-  max-width: 92%;
-  padding: 0.6rem 0.8rem;
-  border-radius: 10px;
-  overflow-wrap: anywhere;
-}
-
-.concierge-chat__message p {
-  margin: 0 0 0.5rem;
-}
-
-.concierge-chat__message p:last-child,
-.concierge-chat__message ul:last-child,
-.concierge-chat__message ol:last-child {
-  margin-bottom: 0;
-}
-
-.concierge-chat__message ul,
-.concierge-chat__message ol {
-  margin: 0 0 0.5rem;
-  padding-left: 1.2rem;
-}
-
-.concierge-chat__message--user {
-  align-self: flex-end;
-  background: var(--accent-color, #1d6a86);
-  color: var(--background, #fff);
-  white-space: pre-wrap;
-}
-
-.concierge-chat__message--assistant {
-  align-self: flex-start;
-  border: 1px solid var(--card-border-color, rgba(128, 128, 128, 0.3));
-  background: var(--card-background, transparent);
-}
-
-.concierge-chat__message--pending {
-  align-self: flex-start;
-  color: var(--text-color-secondary, #5c6370);
-  font-style: italic;
-}
-
-.concierge-chat__message--error {
-  align-self: flex-start;
-  border: 1px solid var(--red, #d33833);
-  color: var(--red, #d33833);
-}
-
-.concierge-chat__code {
-  max-height: 20rem;
-  margin: 0 0 0.5rem;
-  padding: 0.6rem;
-  overflow: auto;
-  border-radius: 6px;
-  background: var(--pre-background, rgba(128, 128, 128, 0.12));
-  font-size: 0.85rem;
-}
-
-.concierge-chat__tools {
-  margin: 0.5rem 0 0 !important;
-  color: var(--text-color-secondary, #5c6370);
-  font-size: 0.8rem;
-}
-
-.concierge-chat__form {
+.concierge-chat__day {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  align-items: center;
+  color: var(--cw-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.concierge-chat__day::before,
+.concierge-chat__day::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cw-border);
+}
+
+/* Messages. */
+
+.concierge-msg {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.concierge-msg--user {
+  flex-direction: row-reverse;
+}
+
+.concierge-msg__column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  max-width: calc(100% - 2.6rem);
+}
+
+.concierge-msg--user .concierge-msg__column {
   align-items: flex-end;
 }
 
-.concierge-chat__input {
+.concierge-msg__meta {
+  display: flex;
+  gap: 0.45rem;
+  align-items: baseline;
+  font-size: 0.75rem;
+}
+
+.concierge-msg__name {
+  font-weight: 700;
+}
+
+.concierge-msg__time {
+  color: var(--cw-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.concierge-msg__bubble {
+  padding: 0.65rem 0.85rem;
+  border-radius: 4px 16px 16px 16px;
+  background: var(--cw-soft);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.concierge-msg--user .concierge-msg__bubble {
+  border-radius: 16px 4px 16px 16px;
+  background: var(--cw-user);
+  color: var(--cw-on-accent);
+  white-space: pre-wrap;
+}
+
+.concierge-msg--error .concierge-msg__bubble {
+  border: 1px solid var(--red, #d33833);
+  background: transparent;
+  color: var(--red, #d33833);
+}
+
+.concierge-msg__bubble p {
+  margin: 0 0 0.55rem;
+}
+
+.concierge-msg__bubble > :last-child {
+  margin-bottom: 0;
+}
+
+.concierge-msg__bubble ul,
+.concierge-msg__bubble ol {
+  margin: 0 0 0.55rem;
+  padding-left: 1.2rem;
+}
+
+.concierge-msg__bubble li + li {
+  margin-top: 0.2rem;
+}
+
+.concierge-msg__bubble code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.16);
+  font-size: 0.85em;
+}
+
+.concierge-msg__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  align-items: center;
+  color: var(--cw-muted);
+  font-size: 0.75rem;
+}
+
+.concierge-msg__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.concierge-chip {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--cw-border);
+  border-radius: 999px;
+  background: var(--cw-raised);
+  white-space: nowrap;
+}
+
+.concierge-msg__usage {
+  font-variant-numeric: tabular-nums;
+}
+
+.concierge-msg__copy {
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-left: auto;
+}
+
+.concierge-msg__copy svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* Code blocks. */
+
+.concierge-code {
+  margin: 0 0 0.55rem;
+  overflow: hidden;
+  border: 1px solid var(--cw-border);
+  border-radius: 10px;
+  background: var(--cw-surface);
+}
+
+.concierge-code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.15rem 0.25rem 0.15rem 0.7rem;
+  border-bottom: 1px solid var(--cw-border);
+  color: var(--cw-muted);
+  font-size: 0.72rem;
+  text-transform: lowercase;
+}
+
+.concierge-code__copy {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.concierge-code__copy svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.concierge-code__body {
+  max-height: 18rem;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  overflow: auto;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.concierge-code__body code {
+  padding: 0;
+  background: none;
+}
+
+/* Typing indicator. */
+
+.concierge-typing {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem 0;
+}
+
+.concierge-typing span {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--cw-muted);
+  opacity: 0.5;
+}
+
+/* The composer. */
+
+.concierge-composer {
+  display: flex;
+  flex: none;
+  gap: 0.4rem;
+  align-items: flex-end;
+  margin: 0 0.85rem;
+  padding: 0.4rem 0.4rem 0.4rem 0.85rem;
+  border: 1px solid var(--cw-border);
+  border-radius: 16px;
+  background: var(--cw-raised);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.concierge-composer:focus-within {
+  border-color: var(--cw-accent);
+  box-shadow: 0 0 0 3px var(--focus-input-glow, rgba(29, 106, 134, 0.18));
+}
+
+.concierge-composer__input {
   flex: 1;
   min-width: 0;
-  resize: vertical;
+  max-height: 180px;
+  padding: 0.45rem 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.4;
+  resize: none;
+}
+
+.concierge-composer__send {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 12px;
+  background: var(--accent-color, #1d6a86);
+  color: #fff;
+}
+
+.concierge-composer__send:hover,
+.concierge-composer__send:focus-visible {
+  background: var(--accent-color, #1d6a86);
+  color: #fff;
+  filter: brightness(1.1);
+}
+
+.concierge-composer__send:disabled {
+  background: var(--cw-soft);
+  color: var(--cw-muted);
+  filter: none;
+  opacity: 1;
 }
 
 .concierge-chat__note {
+  flex: none;
   margin: 0;
-  color: var(--text-color-secondary, #5c6370);
-  font-size: 0.8rem;
+  padding: 0.45rem 1rem 0.75rem;
+  color: var(--cw-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: center;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .concierge-launcher svg,
+  .concierge-launcher__tooltip {
+    transition: opacity 0.15s ease, transform 0.2s ease;
+  }
+
+  .concierge-window:not([hidden]) {
+    animation: concierge-pop 0.18s ease-out;
+  }
+
+  .concierge-typing span {
+    animation: concierge-bounce 1.2s infinite ease-in-out;
+  }
+
+  .concierge-typing span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .concierge-typing span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes concierge-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@keyframes concierge-bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 520px) {
+  .concierge-window {
+    right: 8px;
+    left: 8px;
+    width: auto !important;
+    border-radius: 14px;
+  }
+
+  .concierge-window__resize {
+    display: none;
+  }
+}
 
 .concierge-proposal {
   display: grid;
@@ -649,9 +1107,3 @@
   background: var(--red, #d33833);
 }
 
-.concierge-chat__usage {
-  margin: 0.25rem 0 0 !important;
-  color: var(--text-color-secondary, #5c6370);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-}

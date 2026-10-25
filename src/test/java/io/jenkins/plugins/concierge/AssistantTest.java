@@ -320,6 +320,12 @@ class AssistantTest {
                 .getWebResponse()
                 .getContentAsString();
         assertTrue(history.contains("second question"));
+        Map<String, Object> parsed = Json.parseObject(history);
+        assertEquals("alice", parsed.get("user"), "the chat shows the person's name and initials");
+        for (Object turn : Json.array(parsed, "turns")) {
+            Object at = ((Map<?, ?>) turn).get("at");
+            assertTrue(at instanceof Number && ((Number) at).longValue() > 0, "every turn carries its time: " + turn);
+        }
 
         WebRequest reset = new WebRequest(new URL(r.getURL(), "concierge/assistant/reset"), HttpMethod.POST);
         alice.addCrumb(reset);
