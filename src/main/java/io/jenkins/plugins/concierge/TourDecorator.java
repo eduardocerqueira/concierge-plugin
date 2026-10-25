@@ -16,4 +16,9 @@ public class TourDecorator extends PageDecorator {
         Jenkins jenkins = Jenkins.getInstanceOrNull();
         return jenkins != null && jenkins.hasPermission(ConciergePermissions.USE);
     }
+
+    /** Whether to add the "Ask Concierge" panel to the page. */
+    public boolean isAssistantAvailable() {
+        return AssistantEndpoint.isAvailable();
+    }
 }

@@ -1,0 +1,15 @@
+<div>
+  <p>The assistant looks things up with tools that run as the person asking, so it can never see a
+  job, build or setting that person cannot see in Jenkins.</p>
+  <ul>
+    <li><strong>Build logs</strong>: the end of a console log, or lines matching a search. Secrets are
+      removed first: Jenkins' own masking, plus patterns for keys, tokens, passwords and private
+      keys.</li>
+    <li><strong>Job configuration</strong>: parameter names and defaults (never password defaults) and
+      triggers. Needs the job's Extended Read permission. Inline Pipeline scripts are never sent.</li>
+    <li><strong>Source control</strong>: repository types and addresses, and commit authors and
+      messages.</li>
+  </ul>
+  <p>Every question and tool call is logged to the <code>io.jenkins.plugins.concierge.audit</code>
+  logger. Add a log recorder for it to keep an audit trail.</p>
+</div>

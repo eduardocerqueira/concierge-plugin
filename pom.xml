@@ -70,6 +70,19 @@
     </dependencies>
   </dependencyManagement>
 
+  <!-- The assistant keeps provider API keys in the Credentials plugin (docs/security-design.md,
+       rule 3). Nothing else: HTTP and JSON use the JDK and a small class of our own. -->
+  <dependencies>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>credentials</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>plain-credentials</artifactId>
+    </dependency>
+  </dependencies>
+
   <repositories>
     <repository>
       <id>repo.jenkins-ci.org</id>
@@ -82,9 +95,6 @@
       <url>https://repo.jenkins-ci.org/public/</url>
     </pluginRepository>
   </pluginRepositories>
-
-  <!-- No plugin dependencies yet. Phase 1 (onboarding) needs only Jenkins core; the Credentials
-       plugin arrives with the assistant in phase 2. See docs/roadmap.md. -->
 
   <build>
     <plugins>
