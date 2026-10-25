@@ -15,6 +15,7 @@ import hudson.security.ACL;
 import hudson.security.ACLContext;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -153,12 +154,25 @@ class OnboardingTest {
 
         assertEquals(2, as("admin", StartHereEntry::forCurrentUser).size());
 
-        JSONObject tour =
+        Map<String, Object> tour =
                 as("alice", () -> TourCatalog.steps(TourCatalog.START_HERE, Examples.forCurrentUser(), alice));
         assertNotNull(tour);
-        String json = tour.toString();
+        String json = Json.write(tour);
         assertFalse(json.contains("payroll"), "the start-here tour leaked a hidden job");
         assertFalse(json.contains("Top secret"), "the start-here tour leaked a hidden job's note");
+    }
+
+    @Test
+    void curatedNotesReachTheTourVerbatim() throws Exception {
+        String note = "[x] {\"done\": true} null";
+        ConciergeConfiguration.get().setStartHere(List.of(new PinnedJob("team/api-build", note)));
+        JenkinsRule.WebClient wc = r.createWebClient().login("alice");
+        String json = wc.goTo("concierge/tour?id=" + TourCatalog.START_HERE, "application/json")
+                .getWebResponse()
+                .getContentAsString();
+        Map<String, Object> data = Json.object(Json.parseObject(json), "data");
+        Map<?, ?> first = (Map<?, ?>) Json.array(data, "steps").get(0);
+        assertEquals(note, first.get("text"));
     }
 
     @Test

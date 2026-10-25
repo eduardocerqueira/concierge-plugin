@@ -277,6 +277,26 @@ class ActionsTest {
     }
 
     @Test
+    void theModelGetsDefaultsOnlyWhenConfigurationIsShared() throws Exception {
+        AssistantTools tools =
+                new AssistantTools(AssistantConfiguration.get(), new Redactor(List.of()), new BuildProposals());
+        Llm.ToolResult result =
+                as("alice", () -> tools.run(new Llm.ToolCall("1", "propose_build", Map.of("job", "team/api-build"))));
+        assertFalse(result.error(), result.content());
+        assertFalse(
+                result.content().contains("\"BRANCH\":\"main\""), "a default reached the model: " + result.content());
+        assertTrue(result.content().contains("otherParametersAtTheirDefaults"), result.content());
+
+        // Sharing configuration is not enough on its own: alice may not read the job's configuration.
+        AssistantConfiguration.get().setShareConfiguration(true);
+        result = as("alice", () -> tools.run(new Llm.ToolCall("1", "propose_build", Map.of("job", "team/api-build"))));
+        assertFalse(result.content().contains("\"BRANCH\":\"main\""), result.content());
+        result = as("admin", () -> tools.run(new Llm.ToolCall("1", "propose_build", Map.of("job", "team/api-build"))));
+        assertTrue(result.content().contains("\"BRANCH\":\"main\""), result.content());
+        assertFalse(result.content().contains("s3cret"), "a password default reached the model");
+    }
+
+    @Test
     void passwordAndUnknownParametersAreRefused() throws Exception {
         AssistantTools tools =
                 new AssistantTools(AssistantConfiguration.get(), new Redactor(List.of()), new BuildProposals());
@@ -285,7 +305,7 @@ class ActionsTest {
                 () -> tools.run(new Llm.ToolCall(
                         "1", "propose_build", Map.of("job", "team/api-build", "parameters", Map.of("TOKEN", "x")))));
         assertTrue(password.error());
-        assertTrue(password.content().contains("password parameter"));
+        assertTrue(password.content().contains("password or a credential"));
         Llm.ToolResult unknown = as(
                 "alice",
                 () -> tools.run(new Llm.ToolCall(

@@ -53,7 +53,16 @@ public final class UsageLedger {
         /** Estimated cost in US dollars of the questions whose price was known. */
         @NonNull
         public BigDecimal getCost() {
-            return cost == null ? BigDecimal.ZERO : new BigDecimal(cost);
+            if (cost == null) {
+                return BigDecimal.ZERO;
+            }
+            try {
+                return new BigDecimal(cost);
+            } catch (NumberFormatException e) {
+                // A hand-edited or damaged usage file must not stop every question.
+                LOGGER.log(Level.WARNING, "Ignoring an unreadable cost in the Concierge usage file: {0}", cost);
+                return BigDecimal.ZERO;
+            }
         }
 
         public long getUnpricedQuestions() {

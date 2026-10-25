@@ -77,12 +77,6 @@ class UsageTest {
         return wc.getPage(request);
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> usage(Page page) {
-        return (Map<String, Object>)
-                Json.parseObject(page.getWebResponse().getContentAsString()).get("usage");
-    }
-
     @Test
     void providersReportTokensInTheirOwnFormat() throws Exception {
         Llm.Reply anthropic = HttpLlmClient.anthropicReply(
@@ -102,13 +96,18 @@ class UsageTest {
     }
 
     @Test
-    void eachAnswerCarriesItsTokensAndCost() throws Exception {
-        Map<String, Object> usage = usage(ask(r.createWebClient().login("alice")));
-        assertEquals(3000, usage.get("inputTokens"), "tokens are summed across tool rounds");
-        assertEquals(300, usage.get("outputTokens"));
+    void eachQuestionIsCountedWithItsTokensAndCost() throws Exception {
+        Page answer = ask(r.createWebClient().login("alice"));
+        assertFalse(
+                Json.parseObject(answer.getWebResponse().getContentAsString()).containsKey("usage"),
+                "cost is for the usage page, not shown with every answer");
+        UsageLedger.Entry alice =
+                UsageLedger.get().month(UsageLedger.currentMonth()).get("alice");
+        assertEquals(3000, alice.getInputTokens(), "tokens are summed across tool rounds");
+        assertEquals(300, alice.getOutputTokens());
         // claude-sonnet-5-5 at $2 / $10 per 1M: 3000 * 2 / 1M + 300 * 10 / 1M = $0.009
-        assertEquals(0, new BigDecimal("0.009").compareTo(new BigDecimal((String) usage.get("cost"))));
-        assertEquals(false, usage.get("ownKey"));
+        assertEquals(0, new BigDecimal("0.009").compareTo(alice.getCost()));
+        assertEquals(0, alice.getOwnKeyQuestions());
     }
 
     @Test
@@ -141,8 +140,7 @@ class UsageTest {
         config.setModel("some-model-without-a-price");
         config.setMonthlyBudget("0.001");
         JenkinsRule.WebClient alice = r.createWebClient().login("alice");
-        Map<String, Object> usage = usage(ask(alice));
-        assertNull(usage.get("cost"));
+        ask(alice);
         ask(alice);
         UsageLedger.Entry entry =
                 UsageLedger.get().month(UsageLedger.currentMonth()).get("alice");
@@ -158,7 +156,8 @@ class UsageTest {
         User.getById("alice", true).addProperty(new UserKeyProperty(Secret.fromString("sk-alice-own-key-1")));
         JenkinsRule.WebClient alice = r.createWebClient().login("alice");
         for (int i = 0; i < 3; i++) {
-            assertEquals(true, usage(ask(alice)).get("ownKey"), "the instance budget does not apply to her key");
+            assertEquals(
+                    200, ask(alice).getWebResponse().getStatusCode(), "the instance budget does not apply to her key");
         }
         UsageLedger.Entry entry =
                 UsageLedger.get().month(UsageLedger.currentMonth()).get("alice");

@@ -490,6 +490,7 @@ public class AssistantConfiguration extends GlobalConfiguration {
                 : FormValidation.error(Messages.Models_badPrices(String.join("; ", problems)));
     }
 
+    @POST
     public ListBoxModel doFillProviderItems() {
         ListBoxModel items = new ListBoxModel();
         for (Provider p : Provider.values()) {
@@ -550,12 +551,12 @@ public class AssistantConfiguration extends GlobalConfiguration {
         if (p.isKeyRequired() && key == null) {
             return FormValidation.error(Messages.Assistant_keyNotFound());
         }
-        try {
-            Llm.Reply reply = new HttpLlmClient(p, url.isBlank() ? p.getDefaultBaseUrl() : url, effectiveModel, key)
-                    .complete(
-                            "Reply with the single word OK.",
-                            List.of(new Llm.UserTurn("Connection test from the Jenkins Concierge plugin.")),
-                            List.of());
+        try (HttpLlmClient client =
+                new HttpLlmClient(p, url.isBlank() ? p.getDefaultBaseUrl() : url, effectiveModel, key)) {
+            Llm.Reply reply = client.complete(
+                    "Reply with the single word OK.",
+                    List.of(new Llm.UserTurn("Connection test from the Jenkins Concierge plugin.")),
+                    List.of());
             return FormValidation.ok(
                     Messages.Assistant_connectionOk(reply.text().trim()));
         } catch (Llm.ProviderException e) {

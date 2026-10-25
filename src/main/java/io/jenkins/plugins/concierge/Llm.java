@@ -14,10 +14,14 @@ final class Llm {
     private Llm() {}
 
     /** Talks to one provider. */
-    interface Client {
+    interface Client extends AutoCloseable {
         @NonNull
         Reply complete(@NonNull String system, @NonNull List<Turn> turns, @NonNull List<ToolSpec> tools)
                 throws IOException, InterruptedException;
+
+        /** Releases the connections, once the question is answered. */
+        @Override
+        default void close() {}
     }
 
     /** A tool the model may call, with a JSON Schema for its input. */

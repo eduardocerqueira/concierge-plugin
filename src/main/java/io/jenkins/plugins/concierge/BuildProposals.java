@@ -136,7 +136,7 @@ final class BuildProposals implements Serializable {
                 if (!value.isSensitive()
                         && value.getValue() != null
                         && definition instanceof SimpleParameterDefinition
-                        && !(definition instanceof PasswordParameterDefinition)) {
+                        && !isSecret(definition)) {
                     previous.put(value.getName(), String.valueOf(value.getValue()));
                 }
             }
@@ -240,6 +240,16 @@ final class BuildProposals implements Serializable {
         return job;
     }
 
+    /**
+     * Whether a parameter holds a secret or points at one: passwords, and the Credentials plugin's
+     * parameter, whose value is a credentials id. Matched by name to avoid depending on that plugin's
+     * parameter classes.
+     */
+    static boolean isSecret(@NonNull ParameterDefinition definition) {
+        return definition instanceof PasswordParameterDefinition
+                || definition.getClass().getName().contains("Credentials");
+    }
+
     /** The values a build would start with: requested where allowed, defaults otherwise. For display. */
     @NonNull
     static LinkedHashMap<String, String> parameters(@NonNull Job<?, ?> job, @NonNull Map<String, Object> requested)
@@ -266,7 +276,7 @@ final class BuildProposals implements Serializable {
             Object wanted = requested.get(definition.getName());
             ParameterValue value;
             if (wanted != null) {
-                if (definition instanceof PasswordParameterDefinition) {
+                if (isSecret(definition)) {
                     throw new ProposalException(Messages.Action_noSecrets(definition.getName()));
                 }
                 if (!(definition instanceof SimpleParameterDefinition simple)) {

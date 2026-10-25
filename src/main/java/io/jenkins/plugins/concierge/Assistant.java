@@ -6,6 +6,7 @@ import hudson.model.User;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -44,6 +45,22 @@ final class Assistant {
         this.providerLabel = providerLabel;
     }
 
+    /** How long a question may keep asking the model for tool rounds before it must answer. */
+    static final long DEADLINE_MILLIS = 180_000;
+
+    /** Tokens spent so far, kept here so a question that fails part-way is still counted. */
+    private long inputTokens;
+
+    private long outputTokens;
+
+    long inputTokens() {
+        return inputTokens;
+    }
+
+    long outputTokens() {
+        return outputTokens;
+    }
+
     /** The answer, and the tools used to reach it. */
     record Answer(String text, List<String> toolsUsed, long inputTokens, long outputTokens) {}
 
@@ -51,8 +68,11 @@ final class Assistant {
     Answer ask(@NonNull String question, @CheckForNull String page, @NonNull List<Llm.Turn> history)
             throws IOException, InterruptedException {
         String user = userId();
-        AUDIT.info(() -> "question user=" + user + " provider=" + providerLabel + " page=" + page + " text="
-                + oneLine(question, 500));
+        // Who asked and where goes to the system log; what they asked only at FINE, for a log
+        // recorder, since everyone with Overall/SystemRead can read the system log.
+        AUDIT.info(() -> "question user=" + user + " provider=" + providerLabel + " page=" + page + " chars="
+                + question.length());
+        AUDIT.fine(() -> "question-text user=" + user + " text=" + oneLine(question, 500));
 
         List<Llm.Turn> turns = new ArrayList<>(history);
         turns.add(new Llm.UserTurn(
@@ -61,12 +81,14 @@ final class Assistant {
                         : question + "\n\n(I am looking at this Jenkins page: /" + page + ")"));
         List<Llm.ToolSpec> specs = tools.specs();
         List<String> used = new ArrayList<>();
-        long inputTokens = 0;
-        long outputTokens = 0;
+        long started = System.nanoTime();
 
         for (int round = 0; round <= config.getMaxToolCalls(); round++) {
-            // On the last round no tools are offered, so the model has to answer with what it has.
-            boolean lastRound = round == config.getMaxToolCalls();
+            // On the last round no tools are offered, so the model has to answer with what it has. A
+            // question that has taken too long gets its last round early, so one request cannot hold
+            // a thread for every tool round's full timeout.
+            boolean lastRound = round == config.getMaxToolCalls()
+                    || System.nanoTime() - started > TimeUnit.MILLISECONDS.toNanos(DEADLINE_MILLIS);
             Llm.Reply reply =
                     client.complete(systemPrompt(tools.actionsOffered()), turns, lastRound ? List.of() : specs);
             inputTokens += reply.inputTokens();
@@ -89,9 +111,10 @@ final class Assistant {
             for (Llm.ToolCall call : reply.toolCalls()) {
                 used.add(call.name());
                 Llm.ToolResult result = tools.run(call);
-                AUDIT.info(() -> "tool user=" + user + " name=" + call.name() + " args="
-                        + oneLine(Json.write(call.arguments()), 300) + " error=" + result.error() + " chars="
+                AUDIT.info(() -> "tool user=" + user + " name=" + call.name() + " error=" + result.error() + " chars="
                         + result.content().length());
+                AUDIT.fine(() -> "tool-args user=" + user + " name=" + call.name() + " args="
+                        + oneLine(Json.write(call.arguments()), 300));
                 results.add(result);
             }
             turns.add(new Llm.ToolResultsTurn(results));
