@@ -251,6 +251,16 @@ class AssistantTest {
     }
 
     @Test
+    void theProviderListNeedsSystemRead() throws Exception {
+        assertTrue(as("alice", () -> AssistantConfiguration.get().doFillProviderItems())
+                .isEmpty());
+        assertEquals(
+                Provider.values().length,
+                as("admin", () -> AssistantConfiguration.get().doFillProviderItems())
+                        .size());
+    }
+
+    @Test
     void pluginsNeedSystemRead() throws Exception {
         AssistantTools tools = new AssistantTools(AssistantConfiguration.get(), new Redactor(List.of()));
         assertTrue(as("alice", () -> tools.run(new Llm.ToolCall("1", "list_plugins", Map.of())))

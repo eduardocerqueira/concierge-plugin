@@ -493,6 +493,10 @@ public class AssistantConfiguration extends GlobalConfiguration {
     @POST
     public ListBoxModel doFillProviderItems() {
         ListBoxModel items = new ListBoxModel();
+        // System Read, not Administer: read-only viewers of the System page still see the field.
+        if (!Jenkins.get().hasPermission(Jenkins.SYSTEM_READ)) {
+            return items;
+        }
         for (Provider p : Provider.values()) {
             items.add(p.getDisplayName(), p.name());
         }

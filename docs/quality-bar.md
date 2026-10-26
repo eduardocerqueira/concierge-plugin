@@ -22,7 +22,11 @@ with Trivy:
 - **Shipped**: compile and runtime scope, everything inside the `.hpi`. The bar is zero, and it
   blocks the merge.
 - **Full tree**: also Jenkins core and the libraries it brings. A plugin ships none of that, so it is
-  reported loudly but does not block. It is cleared by moving `jenkins.baseline` forward.
+  reported loudly in the job summary but does not block. It is cleared by moving `jenkins.baseline`
+  forward.
+
+The repository's code scanning alerts show the shipped scan only, so they list what this plugin is
+responsible for and not Jenkins core's libraries.
 
 If something the plugin genuinely ships has a vulnerability with no fix, add an entry to
 [`.trivyignore`](../.trivyignore) with a reason, an upstream link and an expiry date.
@@ -30,7 +34,8 @@ If something the plugin genuinely ships has a vulnerability with no fix, add an 
 ## The security scan
 
 [`jenkins-security-scan.yml`](../.github/workflows/jenkins-security-scan.yml) runs the Jenkins
-project's CodeQL queries. It needs code scanning, so it is skipped while this repository is private.
+project's CodeQL queries on every pull request and every push to `main`, and reports to code
+scanning.
 
 ## Running the gates locally
 

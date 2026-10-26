@@ -91,6 +91,8 @@ public class AssistantEndpoint implements StaplerProxy {
     /** The conversation so far, for the chat panel when it opens. Read-only, so GET is fine. */
     @GET
     public HttpResponse doHistory(StaplerRequest2 req) {
+        // getTarget() has already checked this; checked again here like every other web method.
+        Jenkins.get().checkPermission(ConciergePermissions.ASSISTANT);
         return json(
                 200,
                 Map.of(
