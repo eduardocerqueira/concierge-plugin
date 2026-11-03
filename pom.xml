@@ -52,8 +52,8 @@
     <spotless.check.skip>false</spotless.check.skip>
 
     <!-- Jenkins baseline: the newest LTS line. -->
-    <jenkins.baseline>2.568</jenkins.baseline>
-    <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+    <jenkins.baseline>2.580</jenkins.baseline>
+    <jenkins.version>${jenkins.baseline}.2</jenkins.version>
   </properties>
 
   <dependencyManagement>
@@ -61,7 +61,7 @@
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
         <artifactId>bom-${jenkins.baseline}.x</artifactId>
-        <version>7237.v5071b_f4589f1</version>
+        <version>7280.ve2096dda_41b_9</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
