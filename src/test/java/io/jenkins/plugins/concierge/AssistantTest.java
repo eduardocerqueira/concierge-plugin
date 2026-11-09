@@ -198,6 +198,24 @@ class AssistantTest {
     }
 
     @Test
+    void answersLinkOnlyTheJobsTheUserCanRead() throws Exception {
+        script.add(turns -> new Llm.Reply(
+                "team/web-deploy #1 failed, and so did secret/payroll-deploy. See https://evil.example/", List.of()));
+
+        JenkinsRule.WebClient alice = r.createWebClient().login("alice");
+        Map<String, Object> body =
+                Json.parseObject(ask(alice, "What failed?").getWebResponse().getContentAsString());
+        List<Object> expected = List.of(Map.of("name", "team/web-deploy", "url", "job/team/job/web-deploy/"));
+        assertEquals(expected, body.get("links"), "links are for readable jobs only, with URLs from Jenkins");
+
+        Map<String, Object> history = Json.parseObject(alice.goTo("concierge/assistant/history", "application/json")
+                .getWebResponse()
+                .getContentAsString());
+        Map<?, ?> answer = (Map<?, ?>) Json.array(history, "turns").get(1);
+        assertEquals(expected, answer.get("links"), "a restored conversation keeps its links");
+    }
+
+    @Test
     void hiddenJobsLookExactlyLikeMissingOnes() throws Exception {
         script.add(callTool("get_job", Map.of("job", "secret/payroll-deploy")));
         script.add(callTool("get_job", Map.of("job", "team/no-such-job")));

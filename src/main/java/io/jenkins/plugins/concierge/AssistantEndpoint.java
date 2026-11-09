@@ -2,11 +2,14 @@ package io.jenkins.plugins.concierge;
 
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
+import hudson.model.Item;
+import hudson.model.Job;
 import hudson.model.User;
 import hudson.util.FormValidation;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +85,15 @@ public class AssistantEndpoint implements StaplerProxy {
             if (turn instanceof Llm.UserTurn user) {
                 out.add(Map.of("role", "user", "text", user.text(), "at", user.at()));
             } else if (turn instanceof Llm.AssistantTurn assistant) {
-                out.add(Map.of("role", "assistant", "text", assistant.text(), "at", assistant.at()));
+                out.add(Map.of(
+                        "role",
+                        "assistant",
+                        "text",
+                        assistant.text(),
+                        "at",
+                        assistant.at(),
+                        "links",
+                        jobLinks(assistant.text())));
             }
         }
         return out;
@@ -171,6 +182,7 @@ public class AssistantEndpoint implements StaplerProxy {
             result.put("askedAt", askedAt);
             result.put("at", System.currentTimeMillis());
             result.put("tools", answer.toolsUsed());
+            result.put("links", jobLinks(answer.text()));
             // Counted for the usage page and the budget; not shown with the answer.
             recordUsage(config, userId, answer.inputTokens(), answer.outputTokens(), userKey != null, true);
             List<Object> proposed = new ArrayList<>();
@@ -290,6 +302,37 @@ public class AssistantEndpoint implements StaplerProxy {
         }
         Object stored = session.getAttribute(HISTORY);
         return stored instanceof List ? List.copyOf((List<Llm.Turn>) stored) : List.of();
+    }
+
+    /**
+     * The jobs an answer names, so the chat can link them: each readable job whose full name (or full
+     * display name) appears in the text, with its URL relative to the Jenkins root, longest name
+     * first. The URL comes from Jenkins, never from the model, and only for jobs the current user can
+     * read, checked again every time a conversation is shown. The chat links a name only where it
+     * stands on its own, and adds the build number when one follows it as in "team/web-deploy #3".
+     */
+    @NonNull
+    static List<Map<String, Object>> jobLinks(@CheckForNull String text) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (text == null || text.isBlank()) {
+            return out;
+        }
+        for (Job<?, ?> job : Jenkins.get().getAllItems(Job.class)) {
+            if (!job.hasPermission(Item.READ)) {
+                continue;
+            }
+            String name = job.getFullName();
+            if (text.contains(name)) {
+                out.add(Map.of("name", name, "url", job.getUrl()));
+            }
+            String display = job.getFullDisplayName();
+            if (!display.equals(name) && text.contains(display)) {
+                out.add(Map.of("name", display, "url", job.getUrl()));
+            }
+        }
+        out.sort(Comparator.comparingInt((Map<String, Object> link) -> ((String) link.get("name")).length())
+                .reversed());
+        return out;
     }
 
     /** The page the user is on, as a path relative to the Jenkins root, or null. */

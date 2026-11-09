@@ -82,9 +82,13 @@ by other people, and the model reads them.
 **Risk: cross-site scripting.**
 
 - Model output and curated tour text are shown as text, or as a small Markdown subset (paragraphs,
-  lists, bold, inline code and code blocks) built from DOM nodes. Links and images are deliberately
-  unsupported, so an answer can neither load a remote resource nor carry a `javascript:` URL. Never
-  `innerHTML`.
+  lists, bold, inline code and code blocks) built from DOM nodes. Links and images the model writes
+  are deliberately unsupported, so an answer can neither load a remote resource nor carry a
+  `javascript:` URL. Never `innerHTML`.
+- The one kind of link in an answer is a job name. The server finds the readable jobs an answer
+  names and sends their URLs from Jenkins with it (`AssistantEndpoint.jobLinks`), checked again for
+  the current user each time a conversation is shown. The model chooses the words, never the URL,
+  and it can only point at a job the reader may already open.
 - No inline JavaScript in Jelly. State goes through `data-` attributes, so pages work under the
   Jenkins Content-Security-Policy.
 - Any tour library is bundled with the plugin, never loaded from a CDN.
