@@ -12,28 +12,25 @@
            data-progress-url="${rootURL}/${it.urlName}/progress"
            data-logged-in="${it.loggedIn}">
 
-        <header class="concierge-hero">
-          <div class="concierge-hero__text">
-            <p class="concierge-eyebrow">Concierge</p>
-            <h1>${%Welcome to this Jenkins}</h1>
-            <j:choose>
-              <j:when test="${!empty(it.welcomeMessage)}">
-                <p class="concierge-welcome">${it.welcomeMessage}</p>
-              </j:when>
-              <j:otherwise>
-                <p class="concierge-welcome">${%intro}</p>
-              </j:otherwise>
-            </j:choose>
-          </div>
-          <div class="concierge-hero__actions">
+        <div class="concierge-hero">
+          <p class="concierge-eyebrow">Concierge</p>
+          <l:app-bar title="${%Welcome to this Jenkins}">
             <j:if test="${it.canManageTours}">
               <a class="jenkins-button" href="manage">${%Edit welcome and start here}</a>
             </j:if>
             <j:if test="${it.administrator}">
               <a class="jenkins-button" href="usage">${%Assistant usage}</a>
             </j:if>
-          </div>
-        </header>
+          </l:app-bar>
+          <j:choose>
+            <j:when test="${!empty(it.welcomeMessage)}">
+              <p class="concierge-welcome">${it.welcomeMessage}</p>
+            </j:when>
+            <j:otherwise>
+              <p class="concierge-welcome">${%intro}</p>
+            </j:otherwise>
+          </j:choose>
+        </div>
 
         <section class="concierge-section" aria-labelledby="concierge-overview-title">
           <h2 id="concierge-overview-title">${%At a glance}</h2>
@@ -145,17 +142,11 @@
                         </j:choose>
                       </div>
                       <j:if test="${it.loggedIn}">
-                        <label class="concierge-step__done">
-                          <j:choose>
-                            <j:when test="${step.done}">
-                              <input type="checkbox" data-step="${step.id}" data-path="${path.id}" checked="checked"/>
-                            </j:when>
-                            <j:otherwise>
-                              <input type="checkbox" data-step="${step.id}" data-path="${path.id}"/>
-                            </j:otherwise>
-                          </j:choose>
-                          <span>${%Done}</span>
-                        </label>
+                        <span class="jenkins-checkbox concierge-step__done">
+                          <input type="checkbox" id="concierge-step-${path.id}-${step.id}"
+                                 data-step="${step.id}" data-path="${path.id}" checked="${step.done ? 'true' : null}"/>
+                          <label for="concierge-step-${path.id}-${step.id}">${%Done}</label>
+                        </span>
                       </j:if>
                     </li>
                   </j:forEach>

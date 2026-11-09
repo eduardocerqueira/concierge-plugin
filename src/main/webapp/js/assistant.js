@@ -5,6 +5,8 @@
  *
  * Answers are rendered from plain text into DOM nodes: paragraphs, "- " lists, ``` code blocks,
  * `inline code` and **bold**. Nothing is ever parsed as HTML (docs/security-design.md, rule 6).
+ * Job names become links, but only names the server sends with the answer: jobs the person can
+ * read, with URLs from Jenkins. A link the model writes itself stays plain text.
  */
 (function () {
   "use strict";
@@ -60,11 +62,22 @@
     return svg;
   }
 
+  /**
+   * A Jenkins tooltip, the same as the rest of the UI. Jenkins attaches them with Behaviour when a page
+   * loads, so anything added later has to be attached here; doing it again replaces the old one.
+   */
+  function tooltip(node, text) {
+    node.setAttribute("tooltip", text);
+    if (window.Behaviour && Behaviour.applySubtree) {
+      Behaviour.applySubtree(node, true);
+    }
+  }
+
   function iconButton(name, label, className) {
     var button = el("button", "concierge-icon-button" + (className ? " " + className : ""));
     button.type = "button";
     button.setAttribute("aria-label", label);
-    button.title = label;
+    tooltip(button, label);
     button.appendChild(icon(name));
     return button;
   }
@@ -126,28 +139,83 @@
 
   // ------------------------------------------------------------------ rendering answers
 
-  function inline(parent, text) {
-    var pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*)/g;
+  function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  /**
+   * Matches the job names in links, longest first so "team/web-deploy" wins over "web-deploy", and
+   * only where a name stands on its own: not inside a longer name or path. A "#12" after the name is
+   * captured, so the link opens that build.
+   */
+  function linkPattern(links) {
+    if (!links || !links.length) {
+      return null;
+    }
+    var names = links
+      .map(function (link) {
+        return String(link.name);
+      })
+      .filter(function (name) {
+        return name.length > 0;
+      })
+      .sort(function (a, b) {
+        return b.length - a.length;
+      })
+      .map(escapeRegExp);
+    if (!names.length) {
+      return null;
+    }
+    return new RegExp("(?<![\\w/.-])(" + names.join("|") + ")(?: #(\\d+))?(?![\\w/-])", "g");
+  }
+
+  /** Writes text into parent, turning the job names in links into links. */
+  function linked(parent, text, links) {
+    var pattern = linkPattern(links);
+    if (!pattern) {
+      parent.appendChild(document.createTextNode(text));
+      return;
+    }
+    var urls = {};
+    links.forEach(function (link) {
+      urls[link.name] = link.url;
+    });
     var last = 0;
     var match;
     while ((match = pattern.exec(text)) !== null) {
       if (match.index > last) {
         parent.appendChild(document.createTextNode(text.slice(last, match.index)));
       }
-      var token = match[0];
-      if (token.charAt(0) === "`") {
-        parent.appendChild(el("code", null, token.slice(1, -1)));
-      } else {
-        parent.appendChild(el("strong", null, token.slice(2, -2)));
-      }
-      last = match.index + token.length;
+      var a = el("a", "concierge-msg__link", match[0]);
+      a.href = root + "/" + urls[match[1]] + (match[2] ? match[2] + "/" : "");
+      parent.appendChild(a);
+      last = match.index + match[0].length;
     }
     if (last < text.length) {
       parent.appendChild(document.createTextNode(text.slice(last)));
     }
   }
 
-  function prose(container, text) {
+  function inline(parent, text, links) {
+    var pattern = /(`[^`\n]+`|\*\*[^*\n]+\*\*)/g;
+    var last = 0;
+    var match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match.index > last) {
+        linked(parent, text.slice(last, match.index), links);
+      }
+      var token = match[0];
+      var node = el(token.charAt(0) === "`" ? "code" : "strong");
+      linked(node, token.charAt(0) === "`" ? token.slice(1, -1) : token.slice(2, -2), links);
+      parent.appendChild(node);
+      last = match.index + token.length;
+    }
+    if (last < text.length) {
+      linked(parent, text.slice(last), links);
+    }
+  }
+
+  function prose(container, text, links) {
     var lines = text.split("\n");
     var paragraph = null;
     var list = null;
@@ -160,7 +228,7 @@
           container.appendChild(list);
         }
         var item = el("li");
-        inline(item, bullet[1]);
+        inline(item, bullet[1], links);
         list.appendChild(item);
       } else if (line.trim() === "") {
         paragraph = null;
@@ -173,7 +241,7 @@
         } else {
           paragraph.appendChild(el("br"));
         }
-        inline(paragraph, line);
+        inline(paragraph, line, links);
       }
     });
   }
@@ -198,12 +266,12 @@
     container.appendChild(block);
   }
 
-  function renderRich(text, container) {
+  function renderRich(text, container, links) {
     String(text).split("```").forEach(function (part, index) {
       if (index % 2 === 1) {
         codeBlock(container, part);
       } else if (part.trim() !== "") {
-        prose(container, part);
+        prose(container, part, links);
       }
     });
   }
@@ -211,15 +279,10 @@
   // ------------------------------------------------------------------ server
 
   function request(path, params) {
-    var headers = { Accept: "application/json" };
-    var crumbHeader = head.getAttribute("data-crumb-header");
-    var crumbValue = head.getAttribute("data-crumb-value");
-    var options = { credentials: "same-origin", headers: headers };
+    var options = { credentials: "same-origin", headers: { Accept: "application/json" } };
     if (params) {
-      headers["Content-Type"] = "application/x-www-form-urlencoded";
-      if (crumbHeader && crumbValue) {
-        headers[crumbHeader] = crumbValue;
-      }
+      // crumb is Jenkins' own helper, defined on every page; wrap adds the CSRF header.
+      options.headers = crumb.wrap({ Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" });
       options.method = "POST";
       options.body = new URLSearchParams(params);
     }
@@ -254,6 +317,20 @@
 
   // ------------------------------------------------------------------ the chat
 
+  /**
+   * The logo from the Jenkins header, so the chat greets people with the same picture, including an
+   * instance's own logo if it has replaced the butler. Jenkins' default logo when the header has none.
+   */
+  function jenkinsLogo() {
+    var logo = el("img", "concierge-chat__logo");
+    var header = document.getElementById("jenkins-head-icon");
+    var resources = (head && head.getAttribute("data-resurl")) || root;
+    logo.src = header && header.getAttribute("src") ? header.getAttribute("src") : resources + "/images/svgs/logo.svg";
+    logo.alt = "";
+    logo.setAttribute("aria-hidden", "true");
+    return logo;
+  }
+
   /** A chat bound to a container: message list, composer, and the calls to the server. */
   function Chat(container) {
     var userName = "";
@@ -278,9 +355,7 @@
     composer.appendChild(sendButton);
 
     var empty = el("div", "concierge-chat__empty");
-    var hero = el("div", "concierge-chat__hero");
-    hero.appendChild(icon("bell"));
-    empty.appendChild(hero);
+    empty.appendChild(jenkinsLogo());
     empty.appendChild(el("p", "concierge-chat__empty-title", "How can I help?"));
     empty.appendChild(el("p", "concierge-chat__empty-text", "Ask about jobs, builds and failures on this Jenkins."));
     var examples = el("div", "concierge-chat__examples");
@@ -360,7 +435,7 @@
       if (at) {
         var time = el("time", "concierge-msg__time", timeOf(at));
         time.dateTime = new Date(at).toISOString();
-        time.title = new Date(at).toLocaleString();
+        tooltip(time, new Date(at).toLocaleString());
         meta.appendChild(time);
       }
       column.appendChild(meta);
@@ -439,9 +514,9 @@
       scrollDown();
     }
 
-    function addAssistant(text, at, tools, proposals) {
+    function addAssistant(text, at, tools, proposals, links) {
       var parts = messageRow("assistant", at);
-      renderRich(text, parts.bubble);
+      renderRich(text, parts.bubble, links);
       (proposals || []).forEach(function (proposal) {
         parts.bubble.appendChild(proposalCard(proposal));
       });
@@ -512,7 +587,7 @@
         })
         .then(function (body) {
           indicator.remove();
-          addAssistant(String(body.answer || ""), body.at || Date.now(), body.tools, body.proposals);
+          addAssistant(String(body.answer || ""), body.at || Date.now(), body.tools, body.proposals, body.links);
         })
         .catch(function (error) {
           if (indicator) {
@@ -551,7 +626,7 @@
           if (turn.role === "user") {
             addUser(turn.text, turn.at);
           } else {
-            addAssistant(turn.text, turn.at);
+            addAssistant(turn.text, turn.at, null, null, turn.links);
           }
         });
         if (body.provider) {
@@ -629,9 +704,7 @@
     cross.classList.add("concierge-launcher__close");
     launcher.appendChild(bell);
     launcher.appendChild(cross);
-    var tooltip = el("span", "concierge-launcher__tooltip", "Ask Concierge about this page");
-    tooltip.setAttribute("aria-hidden", "true");
-    launcher.appendChild(tooltip);
+    tooltip(launcher, "Ask Concierge about this page");
 
     var win = el("section", "concierge-window");
     win.id = "concierge-window";
@@ -642,7 +715,7 @@
     var handle = el("div", "concierge-window__resize");
     handle.setAttribute("role", "separator");
     handle.setAttribute("aria-label", "Resize the assistant. Drag, or use the arrow keys.");
-    handle.title = "Drag to resize";
+    tooltip(handle, "Drag to resize");
     handle.tabIndex = 0;
     win.appendChild(handle);
 
@@ -664,7 +737,7 @@
     var fullPage = el("a", "concierge-icon-button");
     fullPage.href = base;
     fullPage.setAttribute("aria-label", "Open as a full page");
-    fullPage.title = "Open as a full page";
+    tooltip(fullPage, "Open as a full page");
     fullPage.appendChild(icon("external"));
     var close = iconButton("close", "Close");
     [newChat, expand, fullPage, close].forEach(function (button) {
@@ -697,7 +770,7 @@
         expand.setAttribute("data-expanded", String(expanded));
         expand.replaceChildren(icon(expanded ? "collapse" : "expand"));
         expand.setAttribute("aria-label", expanded ? "Restore size" : "Expand");
-        expand.title = expanded ? "Restore size" : "Expand";
+        tooltip(expand, expanded ? "Restore size" : "Expand");
       }
     }
 
@@ -791,6 +864,7 @@
       launcher.classList.add("concierge-launcher--open");
       launcher.setAttribute("aria-expanded", "true");
       launcher.setAttribute("aria-label", "Close the assistant");
+      tooltip(launcher, "Close the assistant");
       applySize();
       place();
       write("sessionStorage", OPEN_KEY, "1");
@@ -817,6 +891,7 @@
       launcher.classList.remove("concierge-launcher--open");
       launcher.setAttribute("aria-expanded", "false");
       launcher.setAttribute("aria-label", "Ask Concierge about this page");
+      tooltip(launcher, "Ask Concierge about this page");
       write("sessionStorage", OPEN_KEY, "0");
       launcher.focus();
     }

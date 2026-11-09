@@ -16,6 +16,12 @@ import java.util.Map;
  * step is shown in the middle of the screen instead of being skipped, so a tour degrades rather
  * than breaks.
  *
+ * <p>Jenkins has two layouts for the dashboard, job and build pages: the classic one, and the newer
+ * one users can turn on under Experiments. A selector lists the newer layout's element first where
+ * the two differ, since some classic classes (such as {@code .jenkins-app-bar}) are still present in
+ * the newer layout but mean something else there. Never end a selector with a whole panel such as
+ * {@code #side-panel}: pointing at the wrong thing is worse than pointing at nothing.
+ *
  * <p>Every path comes from a job the current user can read, and all text is sent as plain text and
  * written with {@code textContent} (docs/security-design.md, rule 6).
  */
@@ -24,6 +30,12 @@ final class TourCatalog {
     static final String DASHBOARD = "dashboard";
     static final String JOB = "job";
     static final String START_HERE = "start-here";
+
+    /** The page title: the newer layout's build bar, else the classic app bar. */
+    private static final String TITLE = ".app-build-bar__content, .jenkins-app-bar, h1";
+
+    /** What you can do on this page: the classic side-panel tasks, else the newer layout's top-bar controls. */
+    private static final String TASKS = "#tasks, .app-build-bar__controls";
 
     private TourCatalog() {}
 
@@ -56,21 +68,14 @@ final class TourCatalog {
                     "#root-action-SearchAction, .jenkins-header__actions",
                     Messages.TourStep_search_title(),
                     Messages.TourStep_search_text()));
-            steps.add(step(
-                    "",
-                    "#tasks, #side-panel",
-                    Messages.TourStep_sidePanel_title(),
-                    Messages.TourStep_sidePanel_text()));
+            steps.add(step("", TASKS, Messages.TourStep_sidePanel_title(), Messages.TourStep_sidePanel_text()));
             steps.add(step(
                     "",
                     "#projectstatus, #main-panel",
                     Messages.TourStep_jobList_title(),
                     Messages.TourStep_jobList_text()));
             steps.add(step(
-                    "",
-                    "#buildQueue, #executors, #side-panel",
-                    Messages.TourStep_queue_title(),
-                    Messages.TourStep_queue_text()));
+                    "", "#buildQueue, #executors", Messages.TourStep_queue_title(), Messages.TourStep_queue_text()));
             steps.add(step(
                     "concierge/",
                     ".concierge-paths, #main-panel",
@@ -79,24 +84,15 @@ final class TourCatalog {
         } else if (JOB.equals(id) && examples.builtJob != null) {
             String job = JobRef.url(examples.builtJob);
             String build = Examples.lastBuildUrl(examples.builtJob);
+            steps.add(step(job, TITLE, Messages.TourStep_jobTitle_title(), Messages.TourStep_jobTitle_text()));
+            steps.add(step(job, TASKS, Messages.TourStep_jobTasks_title(), Messages.TourStep_jobTasks_text()));
             steps.add(step(
                     job,
-                    ".jenkins-app-bar, h1",
-                    Messages.TourStep_jobTitle_title(),
-                    Messages.TourStep_jobTitle_text()));
-            steps.add(step(
-                    job, "#tasks, #side-panel", Messages.TourStep_jobTasks_title(), Messages.TourStep_jobTasks_text()));
-            steps.add(step(
-                    job,
-                    "#jenkins-build-history, #buildHistoryPage, #side-panel",
+                    "#jenkins-build-history, #buildHistoryPage",
                     Messages.TourStep_history_title(),
                     Messages.TourStep_history_text()));
             if (build != null) {
-                steps.add(step(
-                        build,
-                        ".jenkins-app-bar, h1",
-                        Messages.TourStep_build_title(),
-                        Messages.TourStep_build_text()));
+                steps.add(step(build, TITLE, Messages.TourStep_build_title(), Messages.TourStep_build_text()));
                 steps.add(step(
                         build + "console",
                         ".console-output, #main-panel",
@@ -111,11 +107,7 @@ final class TourCatalog {
         } else if (START_HERE.equals(id) && !startHere.isEmpty()) {
             for (StartHereEntry entry : startHere) {
                 String note = entry.getNote().isEmpty() ? Messages.TourStep_pinned_defaultNote() : entry.getNote();
-                steps.add(step(
-                        entry.getJob().getUrl(),
-                        ".jenkins-app-bar, h1",
-                        entry.getJob().getDisplayName(),
-                        note));
+                steps.add(step(entry.getJob().getUrl(), TITLE, entry.getJob().getDisplayName(), note));
             }
             steps.add(step(
                     "concierge/",

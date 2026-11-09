@@ -12,9 +12,6 @@
     }
     var url = page.getAttribute("data-progress-url");
     var error = document.getElementById("concierge-progress-error");
-    var head = document.head;
-    var crumbHeader = head.getAttribute("data-crumb-header");
-    var crumbValue = head.getAttribute("data-crumb-value");
 
     function updateCount(pathId) {
       var boxes = page.querySelectorAll('input[data-path="' + pathId + '"]');
@@ -35,10 +32,8 @@
       if (!box.matches || !box.matches("input[data-step]")) {
         return;
       }
-      var headers = { "Content-Type": "application/x-www-form-urlencoded" };
-      if (crumbHeader && crumbValue) {
-        headers[crumbHeader] = crumbValue;
-      }
+      // crumb is Jenkins' own helper, defined on every page; wrap adds the CSRF header.
+      var headers = crumb.wrap({ "Content-Type": "application/x-www-form-urlencoded" });
       var body = new URLSearchParams();
       body.set("step", box.getAttribute("data-step"));
       body.set("done", box.checked ? "true" : "false");

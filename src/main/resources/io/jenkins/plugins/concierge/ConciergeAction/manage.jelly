@@ -5,10 +5,10 @@
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:f="/lib/form">
   <l:layout title="${%Edit welcome and start here}" type="one-column" permission="${it.manageToursPermission}">
+    <l:breadcrumb title="${%Edit welcome and start here}"/>
     <l:main-panel>
-      <div class="concierge">
-        <p class="concierge-eyebrow"><a href=".">Concierge</a></p>
-        <h1>${%Edit welcome and start here}</h1>
+      <div class="concierge concierge--page">
+        <l:app-bar title="${%Edit welcome and start here}"/>
         <p class="concierge-muted">${%manage.intro}</p>
         <f:form method="post" action="saveTours" name="config">
           <f:entry title="${%Welcome message}" description="${%welcome.description}">
