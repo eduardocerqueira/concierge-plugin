@@ -5,10 +5,10 @@
 -->
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
   <l:layout title="${%Concierge assistant}" type="one-column">
+    <l:breadcrumb title="${%Ask about this Jenkins}"/>
     <l:main-panel>
-      <div class="concierge">
-        <p class="concierge-eyebrow"><a href="..">Concierge</a></p>
-        <h1>${%Ask about this Jenkins}</h1>
+      <div class="concierge concierge--page">
+        <l:app-bar title="${%Ask about this Jenkins}"/>
         <p class="concierge-muted">${%intro(it.config.provider.displayName)}</p>
         <div id="concierge-chat-page" class="concierge-chat concierge-chat--page"/>
       </div>

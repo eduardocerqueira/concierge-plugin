@@ -33,6 +33,6 @@ body:
     id: versions
     attributes:
       label: Jenkins and plugin versions
-      placeholder: "Jenkins 2.580.2, Concierge 1.0"
+      placeholder: "Jenkins 2.568.3, Concierge 1.0"
     validations:
       required: true

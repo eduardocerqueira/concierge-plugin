@@ -2,10 +2,10 @@
 <!-- Assistant usage this month. Administrators only (UsagePage.getTarget). Counts only: no questions or answers are stored. -->
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
   <l:layout title="${it.displayName}" type="one-column">
+    <l:breadcrumb title="${%Assistant usage}"/>
     <l:main-panel>
-      <div class="concierge">
-        <p class="concierge-eyebrow"><a href="..">Concierge</a></p>
-        <h1>${%Assistant usage}</h1>
+      <div class="concierge concierge--page">
+        <l:app-bar title="${%Assistant usage}"/>
         <p class="concierge-muted">${%intro(it.month, it.model)}</p>
         <j:set var="total" value="${it.total}"/>
         <ul class="concierge-stats">

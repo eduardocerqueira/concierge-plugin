@@ -171,6 +171,86 @@ build(release, [VERSION: '2.15.0', ENVIRONMENT: 'production', REGION: 'us-east-1
                 RUN_SMOKE_TESTS: 'false', RELEASE_NOTES: 'Hotfix for the checkout timeout.'])
 [webDeploy, nightly, checkout, ledger, terraform, secrets, k8s, docs, audit].each { build(it) }
 
+// ------------------------------------------------------------------ generated jobs (--n-jobs)
+
+// A busier instance on request: CONCIERGE_DEMO_JOBS more jobs with random names from everyday CI
+// work, spread over one folder per kind of work. Everyone who can read the top level can read
+// these, and each gets one build that mostly passes, sometimes fails, and is sometimes unstable,
+// with a log that fits the job, so the dashboard, search and the assistant have more to work with.
+def extraJobs = (System.getenv('CONCIERGE_DEMO_JOBS') ?: '0') as int
+if (extraJobs > 0) {
+    def random = new Random()
+    def pick = { List list -> list[random.nextInt(list.size())] }
+    def services = ['auth', 'billing', 'checkout', 'search', 'catalog', 'gateway', 'inventory', 'notifications',
+                    'orders', 'profile', 'shipping', 'analytics', 'frontend', 'mobile-api', 'ledger', 'reporting',
+                    'recommendations', 'pricing', 'identity', 'media']
+    def environments = ['', '', '', '-dev', '-staging', '-prod']
+    // Per kind of work: the folder's description, job actions, and what a pass, a failure and an
+    // unstable run print.
+    def kinds = [
+        build       : [about  : 'Builds, packages and lints every service.',
+                       actions: ['build', 'compile', 'docker-build', 'helm-package', 'lint', 'package', 'build-native'],
+                       ok     : { s -> "echo \"Building ${s}\"\necho \"Image ${s}:${1 + random.nextInt(9)}.${random.nextInt(30)}.${random.nextInt(10)} pushed\"" },
+                       fail   : { s -> "echo \"Compiling ${s}\"\necho \"ERROR: cannot find symbol: class ${s.capitalize()}Client\"\nexit 1" },
+                       warn   : { s -> "echo \"Building ${s}\"\necho \"${2 + random.nextInt(40)} lint warnings over the threshold\"\nexit 3" }],
+        testing     : [about  : 'Unit, integration, end-to-end and load tests.',
+                       actions: ['unit-tests', 'integration-tests', 'e2e-tests', 'smoke-tests', 'load-test',
+                                 'contract-tests', 'ui-tests', 'mutation-tests', 'regression-suite'],
+                       ok     : { s -> "echo \"Tests run: ${100 + random.nextInt(1900)}, Failures: 0\"" },
+                       fail   : { s -> "echo \"Tests run: ${100 + random.nextInt(1900)}, Failures: ${1 + random.nextInt(25)}\"\necho \"FAILED: ${s.capitalize()}ServiceIT.handlesTimeouts\"\nexit 1" },
+                       warn   : { s -> "echo \"Tests run: ${100 + random.nextInt(1900)}, Failures: ${1 + random.nextInt(4)}\"\necho \"Marked flaky: retried and passed on the second attempt\"\nexit 3" }],
+        security    : [about  : 'CVE scans, static analysis, secret detection and SBOMs.',
+                       actions: ['cve-scan', 'sast', 'dast', 'secret-scan', 'container-scan', 'sbom-generate',
+                                 'license-check', 'dependency-scan', 'image-signing'],
+                       ok     : { s -> "echo \"Scanned ${s}: 0 vulnerabilities\"" },
+                       fail   : { s -> "echo \"Scanned ${s}\"\necho \"CRITICAL CVE-2026-${1000 + random.nextInt(9000)} in ${pick(['openssl', 'log4j-core', 'libxml2', 'jackson-databind', 'netty', 'glibc'])}\"\nexit 1" },
+                       warn   : { s -> "echo \"Scanned ${s}\"\necho \"${1 + random.nextInt(6)} moderate advisories, none critical\"\nexit 3" }],
+        provisioning: [about  : 'Infrastructure: Terraform, Ansible, images and clusters.',
+                       actions: ['provision', 'terraform-plan', 'terraform-apply', 'ansible-configure', 'packer-image',
+                                 'bootstrap-cluster', 'dns-update', 'scale-nodes', 'vpc-setup'],
+                       ok     : { s -> "echo \"Plan: ${random.nextInt(12)} to add, ${random.nextInt(5)} to change, 0 to destroy\"\necho \"Apply complete\"" },
+                       fail   : { s -> "echo \"Provisioning ${s}\"\necho \"${pick(['Error: quota exceeded for resource cpus', 'Error: state lock held', 'Error: timeout waiting for instance to become healthy'])}\"\nexit 1" },
+                       warn   : { s -> "echo \"Provisioning ${s}\"\necho \"Drift detected on ${1 + random.nextInt(5)} resources\"\nexit 3" }],
+        release     : [about  : 'Releases, deployments, promotions and rollbacks.',
+                       actions: ['release', 'canary-deploy', 'blue-green-deploy', 'rollback', 'tag-version', 'promote',
+                                 'publish-artifacts', 'changelog', 'hotfix-deploy'],
+                       ok     : { s -> "echo \"Deployed ${s} 1.${random.nextInt(40)}.${random.nextInt(10)}\"\necho \"Health checks passed\"" },
+                       fail   : { s -> "echo \"Deploying ${s}\"\necho \"ERROR: health check failed: HTTP 503 from ${s}.internal/healthz\"\necho \"Rolling back\"\nexit 1" },
+                       warn   : { s -> "echo \"Deploying ${s}\"\necho \"Canary error rate ${2 + random.nextInt(4)}.${random.nextInt(10)}% above baseline; holding at 10%\"\nexit 3" }],
+        automation  : [about  : 'Scheduled housekeeping: backups, cleanups, syncs and reports.',
+                       actions: ['nightly-backup', 'cleanup', 'data-sync', 'weekly-report', 'rotate-certs',
+                                 'cache-warm', 'index-rebuild', 'artifact-prune', 'db-vacuum'],
+                       ok     : { s -> "echo \"Processed ${1000 + random.nextInt(90000)} records for ${s}\"" },
+                       fail   : { s -> "echo \"Running for ${s}\"\necho \"ERROR: connection reset by peer (db-${s}.internal:5432)\"\nexit 1" },
+                       warn   : { s -> "echo \"Running for ${s}\"\necho \"Skipped ${1 + random.nextInt(50)} items that were locked\"\nexit 3" }],
+    ]
+    def folders = kinds.collectEntries { kind, spec ->
+        def folder = jenkins.createProject(Folder, kind)
+        folder.setDescription(spec.about)
+        [(kind): folder]
+    }
+    def taken = [] as Set
+    def generated = []
+    extraJobs.times {
+        def kind = pick(kinds.keySet() as List)
+        def spec = kinds[kind]
+        def service = pick(services)
+        def action = pick(spec.actions)
+        def base = "${action}-${service}${pick(environments)}"
+        def name = base
+        for (int n = 2; taken.contains("${kind}/${name}"); n++) {
+            name = "${base}-${n}"
+        }
+        taken << "${kind}/${name}"
+        def roll = random.nextInt(100)
+        def command = roll < 75 ? spec.ok(service) : roll < 90 ? spec.fail(service) : spec.warn(service)
+        def job = freestyle(folders[kind], name, "${action.replace('-', ' ').capitalize()} for ${service}.",
+                command, roll >= 90 ? 3 : null)
+        generated << job
+    }
+    generated.each { build(it) }
+}
+
 // ------------------------------------------------------------------ concierge
 
 def concierge = ConciergeConfiguration.get()

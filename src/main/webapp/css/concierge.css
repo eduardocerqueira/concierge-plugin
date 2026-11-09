@@ -7,13 +7,18 @@
   --concierge-card: var(--card-background, var(--background, #fff));
   --concierge-border: var(--card-border-color, rgba(128, 128, 128, 0.25));
   --concierge-accent: var(--accent-color, #1d6a86);
-  --concierge-failure: var(--red, #d33833);
-  --concierge-unstable: var(--yellow, #e3a008);
-  --concierge-success: var(--green, #2e9e5b);
+  --concierge-failure: var(--error-color, #d33833);
+  --concierge-unstable: var(--warning-color, #e3a008);
+  --concierge-success: var(--success-color, #2e9e5b);
   --concierge-other: var(--text-color-secondary, #8a94a3);
   display: grid;
   gap: 2rem;
   max-width: 1200px;
+}
+
+/* Form and table pages (manage, usage, the full-page assistant) are one block, not a stack of cards. */
+.concierge--page {
+  gap: 1rem;
 }
 
 .concierge h1 {
@@ -48,22 +53,8 @@
   color: var(--concierge-failure);
 }
 
-.concierge-hero {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.concierge-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.concierge-hero__text {
-  max-width: 70ch;
+.concierge-hero .jenkins-app-bar {
+  margin-bottom: 0;
 }
 
 .concierge-welcome {
@@ -239,11 +230,7 @@
 }
 
 .concierge-step__done {
-  display: inline-flex;
   flex: none;
-  gap: 0.35rem;
-  align-items: flex-start;
-  color: var(--concierge-muted);
   font-size: 0.85rem;
 }
 
@@ -402,28 +389,6 @@
 .concierge-launcher:focus-visible {
   outline: 3px solid var(--focus-input-glow, rgba(29, 106, 134, 0.4));
   outline-offset: 3px;
-}
-
-.concierge-launcher__tooltip {
-  position: absolute;
-  right: calc(100% + 0.6rem);
-  top: 50%;
-  padding: 0.35rem 0.6rem;
-  border-radius: 6px;
-  background: var(--text-color, #1f2328);
-  color: var(--background, #fff);
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(4px, -50%);
-}
-
-.concierge-launcher:not(.concierge-launcher--open):hover .concierge-launcher__tooltip,
-.concierge-launcher:not(.concierge-launcher--open):focus-visible .concierge-launcher__tooltip {
-  opacity: 1;
-  transform: translate(0, -50%);
 }
 
 /* The floating window. */
@@ -651,22 +616,11 @@
   display: none;
 }
 
-.concierge-chat__hero {
-  display: grid;
-  place-items: center;
-  width: 3.5rem;
-  height: 3.5rem;
+.concierge-chat__logo {
+  width: 4.5rem;
+  height: 4.5rem;
   margin-bottom: 0.4rem;
-  border-radius: 50%;
-  background: var(--accent-color, #1d6a86);
-  color: var(--cw-on-accent);
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--cw-accent) 30%, transparent);
-}
-
-.concierge-chat__hero svg {
-  width: 1.9rem;
-  height: 1.9rem;
-  fill: currentColor;
+  object-fit: contain;
 }
 
 .concierge-chat__empty-title {
@@ -783,9 +737,9 @@
 }
 
 .concierge-msg--error .concierge-msg__bubble {
-  border: 1px solid var(--red, #d33833);
+  border: 1px solid var(--error-color, #d33833);
   background: transparent;
-  color: var(--red, #d33833);
+  color: var(--error-color, #d33833);
 }
 
 .concierge-msg__bubble p {
@@ -804,6 +758,13 @@
 
 .concierge-msg__bubble li + li {
   margin-top: 0.2rem;
+}
+
+/* Job names the server recognised; see linked() in assistant.js. */
+.concierge-msg__bubble .concierge-msg__link {
+  color: var(--link-color, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .concierge-msg__bubble code {
@@ -976,8 +937,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .concierge-launcher svg,
-  .concierge-launcher__tooltip {
+  .concierge-launcher svg {
     transition: opacity 0.15s ease, transform 0.2s ease;
   }
 
@@ -1096,11 +1056,11 @@
 .concierge-meter__fill {
   width: 0;
   height: 100%;
-  background: var(--green, #2e9e5b);
+  background: var(--success-color, #2e9e5b);
 }
 
 .concierge-meter__fill--high {
-  background: var(--red, #d33833);
+  background: var(--error-color, #d33833);
 }
 
 @media (prefers-reduced-motion: no-preference) {
