@@ -7,7 +7,11 @@
 #   ./scripts/demo.sh --anthropic                  # assistant with Claude ($ANTHROPIC_API_KEY)
 #   ./scripts/demo.sh --openai --model gpt-5       # assistant with OpenAI ($OPENAI_API_KEY)
 #   ./scripts/demo.sh --ollama qwen2.5:7b          # assistant with a local Ollama model
+#   ./scripts/demo.sh --anthropic --n-jobs 100     # plus 100 random jobs, for a busier instance
 #   ./scripts/demo.sh --stop                       # tear it all down again
+#
+#   MVN_SETTINGS_XML=~/.m2/other-settings.xml ./scripts/demo.sh   # build with this Maven settings file
+#   (or 'export MVN_SETTINGS_XML=...' once, and every run in that shell uses it)
 #
 # It builds this plugin from source, bakes it into a throwaway image with the plugins it needs,
 # starts it, and seeds users, folders and thirteen jobs: admin sees everything, alice is a payments
@@ -35,6 +39,8 @@ PROVIDER=""
 MODEL=""
 BASE_URL=""
 API_KEY=""
+EXTRA_JOBS=0
+MAX_EXTRA_JOBS=2000
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # ------------------------------------------------------------------ pretty output
@@ -61,11 +67,16 @@ Options:
   --xai              Use xAI Grok. Reads \$XAI_API_KEY. Needs --model.
   --ollama MODEL     Use a local Ollama model, reached from the container at host.docker.internal.
   --model MODEL      Model id. Anthropic defaults to claude-sonnet-5-5.
+  --n-jobs N         Also create N jobs with random, realistic names (builds, tests, CVE scans,
+                     provisioning, releases, automation), each with one build. 0 to ${MAX_EXTRA_JOBS}.
   --port PORT        Host port to publish Jenkins on. Default ${PORT}.
   --image IMAGE      Base Jenkins image. Default ${IMAGE}.
   --no-build         Reuse target/concierge.hpi instead of running Maven.
   --stop             Stop and remove the demo container and image, then exit.
   -h, --help         This.
+
+Environment:
+  MVN_SETTINGS_XML   Maven settings file to build with (mvn -s). Overrides the automatic choice.
 EOF
 }
 
@@ -78,6 +89,7 @@ while [ $# -gt 0 ]; do
         --xai)       PROVIDER=XAI; API_KEY="${XAI_API_KEY:-}"; shift ;;
         --ollama)    PROVIDER=LOCAL; MODEL="${2:-}"; BASE_URL="http://host.docker.internal:11434/v1"; shift 2 ;;
         --model)     MODEL="${2:-}"; shift 2 ;;
+        --n-jobs)    EXTRA_JOBS="${2:-}"; shift 2 ;;
         --port)      PORT="${2:-}"; shift 2 ;;
         --image)     IMAGE="${2:-}"; shift 2 ;;
         --no-build)  BUILD_PLUGIN=0; shift ;;
@@ -86,6 +98,9 @@ while [ $# -gt 0 ]; do
         *)           die "unknown option: $1 (try --help)" ;;
     esac
 done
+
+[[ "$EXTRA_JOBS" =~ ^[0-9]+$ ]] && [ "$EXTRA_JOBS" -le "$MAX_EXTRA_JOBS" ] \
+    || die "--n-jobs needs a whole number from 0 to ${MAX_EXTRA_JOBS}, not '${EXTRA_JOBS}'"
 
 case "$PROVIDER" in
     ANTHROPIC) [ -n "$API_KEY" ] || die "--anthropic needs ANTHROPIC_API_KEY in the environment" ;;
@@ -127,7 +142,11 @@ if [ "$BUILD_PLUGIN" = "1" ]; then
     step "Building the plugin"
     command -v mvn >/dev/null 2>&1 || die "maven is not on your PATH (or pass --no-build)"
     MVN_ARGS=(-B -ntp -DskipTests clean package)
-    if grep -q 'external:\*' "${HOME}/.m2/settings.xml" 2>/dev/null; then
+    if [ -n "${MVN_SETTINGS_XML:-}" ]; then
+        [ -f "$MVN_SETTINGS_XML" ] || die "MVN_SETTINGS_XML points at $MVN_SETTINGS_XML, which does not exist"
+        note "using Maven settings from MVN_SETTINGS_XML: $MVN_SETTINGS_XML"
+        MVN_ARGS=(-s "$MVN_SETTINGS_XML" "${MVN_ARGS[@]}")
+    elif grep -q 'external:\*' "${HOME}/.m2/settings.xml" 2>/dev/null; then
         note "your ~/.m2/settings.xml mirrors external:*, using .mvn/settings.xml"
         MVN_ARGS=(-s "${REPO_ROOT}/.mvn/settings.xml" "${MVN_ARGS[@]}")
     fi
@@ -157,7 +176,8 @@ info "built $TAG"
 
 step "Starting Jenkins on $BASE"
 $RUNTIME rm -f "$CONTAINER" >/dev/null 2>&1 || true
-RUN_ARGS=(-d --name "$CONTAINER" -p "127.0.0.1:${PORT}:8080" --add-host "host.docker.internal:host-gateway")
+RUN_ARGS=(-d --name "$CONTAINER" -p "127.0.0.1:${PORT}:8080" --add-host "host.docker.internal:host-gateway"
+          -e "CONCIERGE_DEMO_JOBS=${EXTRA_JOBS}")
 if [ -n "$PROVIDER" ]; then
     RUN_ARGS+=(-e "CONCIERGE_PROVIDER=${PROVIDER}" -e "CONCIERGE_MODEL=${MODEL}" -e "CONCIERGE_BASE_URL=${BASE_URL}")
     # The key goes in through the environment of a container bound to localhost. Fine for a demo on
@@ -200,6 +220,11 @@ else
     ASSISTANT="assistant off. Re-run with --anthropic, --openai, --xai or --ollama MODEL to try it"
 fi
 
+EXTRA_SUMMARY=""
+if [ "$EXTRA_JOBS" -gt 0 ]; then
+    EXTRA_SUMMARY=$'\n'"  Plus ${EXTRA_JOBS} generated jobs in build/, testing/, security/, provisioning/, release/ and"$'\n'"  automation/. Their first builds may still be running."
+fi
+
 cat <<EOF
 
 ${GREEN}${BOLD}Ready.${RESET}  ${BOLD}${BASE}/concierge/${RESET}
@@ -211,6 +236,7 @@ ${GREEN}${BOLD}Ready.${RESET}  ${BOLD}${BASE}/concierge/${RESET}
       Neither of them can see the platform folder.
 
   ${ASSISTANT}
+${EXTRA_SUMMARY}
 
   Try a build with parameters: payments/release-train (as alice, ask the assistant)
   Things to try: docs/demo.md

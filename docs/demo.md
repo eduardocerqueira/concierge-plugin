@@ -12,7 +12,17 @@ Concierge, three users and a handful of jobs, in about three minutes.
 
 You need Docker (or Podman), JDK 21 and Maven 3.9, and bash 4 or newer (`brew install bash` on
 macOS). If your `~/.m2/settings.xml` mirrors `external:*`, the script uses `.mvn/settings.xml`
-automatically; see [building.md](building.md).
+automatically; see [building.md](building.md). To build with a settings file of your own, set
+`MVN_SETTINGS_XML`, which takes priority. Set it for one run, or export it once and every run in
+that shell picks it up:
+
+```bash
+MVN_SETTINGS_XML=~/.m2/settings-apache.xml ./scripts/demo.sh
+
+# or
+export MVN_SETTINGS_XML=~/.m2/settings-apache.xml
+./scripts/demo.sh
+```
 
 ## What it sets up
 
@@ -59,6 +69,7 @@ under your user menu → **Appearance**.
 | `--openai --model M` | Assistant with OpenAI. Reads `OPENAI_API_KEY`. |
 | `--xai --model M` | Assistant with xAI Grok. Reads `XAI_API_KEY`. |
 | `--ollama M` | Assistant with a local Ollama model. Start `ollama serve` first. |
+| `--n-jobs N` | Also create N jobs (0 to 2000) with random names from everyday CI work, in `build/`, `testing/`, `security/`, `provisioning/`, `release/` and `automation/`, each with one build that mostly passes. For a busier instance: `./scripts/demo.sh --anthropic --n-jobs 100`. |
 | `--port P` | Use another port. Default 8080. |
 | `--no-build` | Reuse `target/concierge.hpi`. |
 | `--stop` | Remove the container and image. |
