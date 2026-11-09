@@ -22,8 +22,9 @@ with Trivy:
 - **Shipped**: compile and runtime scope, everything inside the `.hpi`. The bar is zero, and it
   blocks the merge.
 - **Full tree**: also Jenkins core and the libraries it brings. A plugin ships none of that, so it is
-  reported loudly in the job summary but does not block. It is cleared by moving `jenkins.baseline`
-  forward.
+  reported loudly in the job summary but does not block. Administrators clear it by upgrading
+  Jenkins. Do not raise `jenkins.baseline` to clear it: the baseline stays on the oldest LTS line
+  the plugin needs, so it installs on as many controllers as possible.
 
 The repository's code scanning alerts show the shipped scan only, so they list what this plugin is
 responsible for and not Jenkins core's libraries.
