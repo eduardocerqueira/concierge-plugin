@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import jenkins.model.Jenkins;
 
@@ -198,6 +199,89 @@ public final class InstanceOverview {
 
     public int getPluginUpdates() {
         return pluginUpdates;
+    }
+
+    /**
+     * The job health bar on the welcome page: one segment per status that has jobs, passing first,
+     * each placed by percentage of all the jobs the user can see. Empty when there are none.
+     */
+    @NonNull
+    public List<Segment> getHealthSegments() {
+        List<Segment> out = new ArrayList<>();
+        if (jobCount == 0) {
+            return out;
+        }
+        double start = 0;
+        for (String status : List.of("success", "unstable", "failure", "aborted", "notbuilt", "disabled")) {
+            int count = getCount(status);
+            if (count == 0) {
+                continue;
+            }
+            double width = 100.0 * count / jobCount;
+            out.add(new Segment(status, count, start, width));
+            start += width;
+        }
+        return out;
+    }
+
+    /** Busy executors as a whole percentage, for the ring on the welcome page. */
+    public int getBusyExecutorsPercent() {
+        return percent(busyExecutors, executors);
+    }
+
+    /** Online agents as a whole percentage, for the ring on the welcome page. */
+    public int getAgentsOnlinePercent() {
+        return percent(agentsOnline, agentCount);
+    }
+
+    private static int percent(int part, int whole) {
+        return whole <= 0 ? 0 : (int) Math.round(100.0 * part / whole);
+    }
+
+    /**
+     * One status in the health bar. Positions are SVG attribute values, not CSS: the views have no
+     * inline styles (docs/security-design.md, rule 6). Always written with a dot, whatever the locale.
+     */
+    public static final class Segment {
+        private final String status;
+        private final int count;
+        private final double start;
+        private final double width;
+
+        Segment(String status, int count, double start, double width) {
+            this.status = status;
+            this.count = count;
+            this.start = start;
+            this.width = width;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        public String getStart() {
+            return String.format(Locale.ROOT, "%.3f", start);
+        }
+
+        public String getWidth() {
+            return String.format(Locale.ROOT, "%.3f", width);
+        }
+
+        /** "passing", "failing" and so on, as the legend says it. */
+        public String getLabel() {
+            return switch (status) {
+                case "success" -> Messages.Overview_status_success();
+                case "unstable" -> Messages.Overview_status_unstable();
+                case "failure" -> Messages.Overview_status_failure();
+                case "aborted" -> Messages.Overview_status_aborted();
+                case "disabled" -> Messages.Overview_status_disabled();
+                default -> Messages.Overview_status_notbuilt();
+            };
+        }
     }
 
     /** A top-level folder and how many jobs inside it the current user can read. */

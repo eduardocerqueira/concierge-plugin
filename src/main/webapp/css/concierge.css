@@ -92,16 +92,133 @@
   font-size: 0.85rem;
 }
 
-.concierge-stat--failure .concierge-stat__value {
-  color: var(--concierge-failure);
+/* At a glance on the welcome page: the job health bar and the two rings. */
+
+.concierge-glance {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
-.concierge-stat--unstable .concierge-stat__value {
-  color: var(--concierge-unstable);
+@media (max-width: 900px) {
+  .concierge-glance {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.concierge-stat--success .concierge-stat__value {
-  color: var(--concierge-success);
+.concierge-card {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--concierge-border);
+  border-radius: 8px;
+  background: var(--concierge-card);
+}
+
+.concierge-card p {
+  margin: 0;
+}
+
+.concierge-card__headline {
+  color: var(--concierge-muted);
+  font-size: 0.9rem;
+}
+
+.concierge-card__number {
+  margin-right: 0.25rem;
+  color: var(--text-color, inherit);
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.concierge-health {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.concierge-health__bar {
+  display: block;
+  width: 100%;
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--concierge-border);
+}
+
+.concierge-fill {
+  fill: var(--concierge-other);
+}
+
+.concierge-fill--success {
+  fill: var(--concierge-success);
+}
+
+.concierge-fill--unstable {
+  fill: var(--concierge-unstable);
+}
+
+.concierge-fill--failure {
+  fill: var(--concierge-failure);
+}
+
+.concierge-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.concierge-legend li {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.concierge-legend strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.concierge-ring-card {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.concierge-ring-card > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.concierge-ring {
+  flex: none;
+  width: 3.4rem;
+  height: 3.4rem;
+}
+
+.concierge-ring__track,
+.concierge-ring__value {
+  fill: none;
+  stroke-width: 4;
+}
+
+.concierge-ring__track {
+  stroke: var(--concierge-border);
+}
+
+.concierge-ring--executors .concierge-ring__value {
+  stroke: var(--concierge-accent);
+}
+
+.concierge-ring--agents .concierge-ring__value {
+  stroke: var(--concierge-success);
+}
+
+.concierge-glance__plugins {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
 }
 
 .concierge-pinned,
@@ -158,14 +275,36 @@
   gap: 0.75rem;
 }
 
+.concierge-tours {
+  counter-reset: concierge-tour;
+}
+
+/* A big number in front of each tour, so the tours read as a path: 1, 2, 3. */
 .concierge-tour {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem 1rem;
   align-content: start;
   padding: 1rem;
   border: 1px solid var(--concierge-border);
   border-radius: 8px;
   background: var(--concierge-card);
+  counter-increment: concierge-tour;
+}
+
+.concierge-tour::before {
+  grid-row: 1 / span 3;
+  content: counter(concierge-tour);
+  color: var(--concierge-accent);
+  font-size: 2.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.concierge-tour > * {
+  grid-column: 2;
 }
 
 .concierge-tour__text {
@@ -194,8 +333,40 @@
 
 .concierge-path > header {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.concierge-path > header h3 {
+  flex: 1;
+}
+
+/* Shown once every step of the path is done. */
+.concierge-path__badge {
+  display: none;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.15rem 0.55rem 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--concierge-success) 15%, transparent);
+  color: var(--concierge-success);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.concierge-path__badge svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.concierge-path--done {
+  border-color: var(--concierge-success);
+}
+
+.concierge-path--done .concierge-path__badge {
+  display: inline-flex;
 }
 
 .concierge-path > p {
