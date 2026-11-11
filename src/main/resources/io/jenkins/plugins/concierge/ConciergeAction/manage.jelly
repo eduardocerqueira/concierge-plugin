@@ -16,18 +16,18 @@
           </f:entry>
           <f:section title="${%Start here}">
             <f:description>${%startHere.description}</f:description>
-            <f:repeatable var="pinned" items="${it.pinnedJobs}" name="pinned" minimum="0" add="${%Add a job}">
-              <table class="concierge-pinned-row">
-                <f:entry title="${%Job full name}" description="${%fullName.description}">
-                  <f:textbox name="fullName" value="${pinned.fullName}"/>
-                </f:entry>
-                <f:entry title="${%Note for newcomers}">
-                  <f:textbox name="note" value="${pinned.note}"/>
-                </f:entry>
-                <f:entry>
-                  <f:repeatableDeleteButton value="${%Remove}"/>
-                </f:entry>
-              </table>
+            <!-- The header gives each entry a drag handle, so the list can be reordered. -->
+            <f:repeatable var="pinned" items="${it.pinnedJobs}" name="pinned" minimum="0" add="${%Add a job}"
+                          header="${%Job}" enableTopButton="true">
+              <f:entry title="${%Job full name}" description="${%fullName.description}">
+                <f:textbox name="fullName" value="${pinned.fullName}"/>
+              </f:entry>
+              <f:entry title="${%Note for newcomers}">
+                <f:textbox name="note" value="${pinned.note}"/>
+              </f:entry>
+              <f:entry>
+                <f:repeatableDeleteButton value="${%Remove}"/>
+              </f:entry>
             </f:repeatable>
           </f:section>
           <f:bottomButtonBar>
