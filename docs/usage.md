@@ -73,6 +73,61 @@ The assistant answers by calling read-only tools that run as the person asking: 
 details, builds, test counts, the build queue, agents, and, for Overall/SystemRead, plugins. It
 knows which page you are on, so "why did this fail?" works on a job or build page.
 
+### Setting up the assistant
+
+On a controller that is already running, an administrator does this once. Nothing needs a restart
+or an environment variable.
+
+1. **Store the API key as a credential.** Go to **Manage Jenkins → Credentials → System → Global
+   credentials → Add Credentials**. Choose the kind **Secret text**, paste the key into **Secret**,
+   and give it an ID you will recognise, such as `anthropic-key`. The key stays in the Credentials
+   plugin and is only ever sent to the provider. Local models usually need no key: skip this step.
+2. **Turn the assistant on.** Go to **Manage Jenkins → System → Concierge assistant** and tick
+   **Enable the AI assistant**; the other settings appear once it is ticked. Choose the
+   **Provider**, pick the credential under **API key**, and choose a **Model** (the list is
+   fetched from the provider with that key). Click **Test connection**, then **Save**. Everything
+   the assistant may see is off until you tick it; see [Settings](#settings) below.
+3. **Give people the permission.** Enabling the assistant is not enough: only people with the
+   **Concierge/Assistant** permission get the bell button, and it is implied by Overall/Administer
+   only. Grant it under **Manage Jenkins → Security**, for example in the matrix, to the users or
+   groups who should use it. The welcome page itself needs nothing: Concierge/Use comes with
+   Overall/Read.
+
+**Network.** The controller calls the provider's API itself (for Anthropic,
+`https://api.anthropic.com`), so it must be able to reach it. Concierge uses Jenkins' own proxy
+settings under **Manage Jenkins → System → HTTP Proxy Configuration**. To route the calls through
+an AI gateway instead, set **Base URL**.
+
+**Configuration as Code.** With the Configuration as Code plugin, the same setup is YAML. The
+settings live under `unclassified.conciergeAssistant`, with the names the
+[Settings](#settings) table uses; **Manage Jenkins → Configuration as Code → View Configuration**
+shows all of them. The key comes from an environment variable or secret source, never from the
+file:
+
+```yaml
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              id: anthropic-key
+              scope: GLOBAL
+              description: Concierge assistant
+              secret: "${ANTHROPIC_API_KEY}"
+unclassified:
+  conciergeAssistant:
+    enabled: true
+    provider: ANTHROPIC          # or OPENAI, XAI, DEEPSEEK, LOCAL
+    credentialsId: anthropic-key
+    model: claude-sonnet-5-5
+    shareLogs: true
+    requestsPerHour: 30
+    monthlyBudget: "200"
+```
+
+The Concierge/Assistant permission is granted with your authorization strategy's own YAML, like
+any other permission.
+
 ### Settings
 
 | Setting | Notes |
