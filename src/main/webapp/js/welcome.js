@@ -25,6 +25,11 @@
       if (count) {
         count.textContent = done + "/" + boxes.length;
       }
+      // Every step done: the card shows the Completed badge, as the server does on page load.
+      var card = page.querySelector('article[data-path="' + pathId + '"]');
+      if (card) {
+        card.classList.toggle("concierge-path--done", boxes.length > 0 && done === boxes.length);
+      }
     }
 
     page.addEventListener("change", function (event) {

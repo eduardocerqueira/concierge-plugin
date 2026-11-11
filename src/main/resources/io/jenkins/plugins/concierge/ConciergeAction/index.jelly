@@ -34,46 +34,71 @@
 
         <section class="concierge-section" aria-labelledby="concierge-overview-title">
           <h2 id="concierge-overview-title">${%At a glance}</h2>
-          <ul class="concierge-stats">
-            <li class="concierge-stat">
-              <span class="concierge-stat__value">${o.jobCount}</span>
-              <span class="concierge-stat__label">${%jobs you can see}</span>
-            </li>
-            <li class="concierge-stat concierge-stat--failure">
-              <span class="concierge-stat__value">${o.getCount('failure')}</span>
-              <span class="concierge-stat__label">${%failing}</span>
-            </li>
-            <li class="concierge-stat concierge-stat--unstable">
-              <span class="concierge-stat__value">${o.getCount('unstable')}</span>
-              <span class="concierge-stat__label">${%unstable}</span>
-            </li>
-            <li class="concierge-stat concierge-stat--success">
-              <span class="concierge-stat__value">${o.getCount('success')}</span>
-              <span class="concierge-stat__label">${%passing}</span>
-            </li>
-            <li class="concierge-stat">
-              <span class="concierge-stat__value">${o.building.size()}</span>
-              <span class="concierge-stat__label">${%building now}</span>
-            </li>
-            <li class="concierge-stat">
-              <span class="concierge-stat__value">${o.queueLength}</span>
-              <span class="concierge-stat__label">${%waiting in the queue}</span>
-            </li>
-            <li class="concierge-stat">
-              <span class="concierge-stat__value">${o.agentsOnline}/${o.agentCount}</span>
-              <span class="concierge-stat__label">${%agents online}</span>
-            </li>
-            <li class="concierge-stat">
-              <span class="concierge-stat__value">${o.busyExecutors}/${o.executors}</span>
-              <span class="concierge-stat__label">${%executors busy}</span>
-            </li>
-            <j:if test="${o.pluginsVisible}">
-              <li class="concierge-stat">
-                <span class="concierge-stat__value">${o.pluginCount}</span>
-                <span class="concierge-stat__label">${%plugins.label(o.pluginUpdates)}</span>
-              </li>
-            </j:if>
-          </ul>
+          <!-- The charts are SVG with positions in attributes, computed by InstanceOverview: no
+               inline styles and no chart library. The text next to them says the same thing. -->
+          <div class="concierge-glance">
+            <div class="concierge-card concierge-health">
+              <p class="concierge-card__headline">
+                <span class="concierge-card__number">${o.jobCount}</span> ${%jobs you can see}
+              </p>
+              <j:set var="segments" value="${o.healthSegments}"/>
+              <j:if test="${!segments.isEmpty()}">
+                <svg class="concierge-health__bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                  <j:forEach var="s" items="${segments}">
+                    <rect class="concierge-fill concierge-fill--${s.status}" x="${s.start}" y="0" width="${s.width}" height="10">
+                      <title>${s.count} ${s.label}</title>
+                    </rect>
+                  </j:forEach>
+                </svg>
+                <ul class="concierge-legend">
+                  <j:forEach var="s" items="${segments}">
+                    <li>
+                      <span class="concierge-status concierge-status--${s.status}" aria-hidden="true"/>
+                      <j:choose>
+                        <j:when test="${s.status == 'failure'}">
+                          <a href="#concierge-failing-title"><strong>${s.count}</strong> ${s.label}</a>
+                        </j:when>
+                        <j:otherwise>
+                          <span><strong>${s.count}</strong> ${s.label}</span>
+                        </j:otherwise>
+                      </j:choose>
+                    </li>
+                  </j:forEach>
+                </ul>
+              </j:if>
+            </div>
+
+            <div class="concierge-card concierge-ring-card">
+              <svg class="concierge-ring concierge-ring--executors" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+                <circle class="concierge-ring__track" cx="18" cy="18" r="15.9155"/>
+                <circle class="concierge-ring__value" cx="18" cy="18" r="15.9155"
+                        stroke-dasharray="${o.busyExecutorsPercent} 100" transform="rotate(-90 18 18)"/>
+              </svg>
+              <div>
+                <p class="concierge-card__headline">
+                  <span class="concierge-card__number">${o.busyExecutors}/${o.executors}</span> ${%executors busy}
+                </p>
+                <p class="concierge-muted">${%queue(o.queueLength)}</p>
+                <p class="concierge-muted">${%building(o.building.size())}</p>
+              </div>
+            </div>
+
+            <div class="concierge-card concierge-ring-card">
+              <svg class="concierge-ring concierge-ring--agents" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+                <circle class="concierge-ring__track" cx="18" cy="18" r="15.9155"/>
+                <circle class="concierge-ring__value" cx="18" cy="18" r="15.9155"
+                        stroke-dasharray="${o.agentsOnlinePercent} 100" transform="rotate(-90 18 18)"/>
+              </svg>
+              <div>
+                <p class="concierge-card__headline">
+                  <span class="concierge-card__number">${o.agentsOnline}/${o.agentCount}</span> ${%agents online}
+                </p>
+              </div>
+            </div>
+          </div>
+          <j:if test="${o.pluginsVisible}">
+            <p class="concierge-muted concierge-glance__plugins">${o.pluginCount} ${%plugins.label(o.pluginUpdates)}</p>
+          </j:if>
         </section>
 
         <j:set var="startHere" value="${it.startHere}"/>
@@ -120,9 +145,16 @@
           <p class="concierge-error" id="concierge-progress-error" hidden="hidden" role="alert"/>
           <div class="concierge-path-grid">
             <j:forEach var="path" items="${it.paths}">
-              <article class="concierge-path" data-path="${path.id}">
+              <!-- The done class shows the Completed badge; welcome.js keeps it in step with the checkboxes. -->
+              <article class="concierge-path ${path.doneCount == path.steps.size() ? 'concierge-path--done' : ''}" data-path="${path.id}">
                 <header>
                   <h3>${path.title}</h3>
+                  <span class="concierge-path__badge">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="m9.5 16.2-4.2-4.2-1.4 1.4 5.6 5.6L21 7.4 19.6 6z"/>
+                    </svg>
+                    ${%Completed}
+                  </span>
                   <span class="concierge-path__count" data-path-count="${path.id}">${path.doneCount}/${path.steps.size()}</span>
                 </header>
                 <p class="concierge-muted">${path.intro}</p>

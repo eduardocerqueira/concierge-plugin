@@ -39,6 +39,7 @@
       ["rect", { x: 2.5, y: 15.8, width: 19, height: 2.6, rx: 1.3 }]],
     send: [["path", { d: "M3.4 20.4 21 12 3.4 3.6l-.1 6.5 12.6 1.9-12.6 1.9z" }]],
     plus: [["path", { d: "M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" }]],
+    home: [["path", { d: "M12 3 2.5 11.2l1.3 1.5L5 11.7V20h5.5v-5.5h3V20H19v-8.3l1.2 1 1.3-1.5zm5 15h-1.5v-5.5h-7V18H7V10l5-4.3 5 4.3z" }]],
     expand: [["path", { d: "M4 4h7v2H7.4l4.3 4.3-1.4 1.4L6 7.4V11H4zm16 16h-7v-2h3.6l-4.3-4.3 1.4-1.4 4.3 4.3V13h2z" }]],
     collapse: [["path", { d: "M11 13v7H9v-3.6l-4.3 4.3-1.4-1.4L7.6 15H4v-2zm2-2V4h2v3.6l4.3-4.3 1.4 1.4L16.4 9H20v2z" }]],
     external: [["path", { d: "M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14zM5 5h6v2H7v10h10v-4h2v6H5z" }]],
@@ -740,7 +741,18 @@
     tooltip(fullPage, "Open as a full page");
     fullPage.appendChild(icon("external"));
     var close = iconButton("close", "Close");
-    [newChat, expand, fullPage, close].forEach(function (button) {
+    var buttons = [newChat, expand, fullPage, close];
+    // Back to the Concierge page (welcome, tours, learning paths), except on that page itself.
+    var homePath = root + "/concierge/";
+    if (window.location.pathname.replace(/\/+$/, "") !== homePath.replace(/\/+$/, "")) {
+      var home = el("a", "concierge-icon-button");
+      home.href = homePath;
+      home.setAttribute("aria-label", "Open the Concierge page");
+      tooltip(home, "Open the Concierge page");
+      home.appendChild(icon("home"));
+      buttons.unshift(home);
+    }
+    buttons.forEach(function (button) {
       actions.appendChild(button);
     });
     header.appendChild(actions);

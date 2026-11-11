@@ -1,0 +1,20 @@
+# Added to demo-plugins.txt by ./scripts/demo.sh --mode turbo: the plugins a typical controller
+# has, so Concierge can be tried against more than a bare Jenkins. Latest versions, resolved with
+# their dependencies by jenkins-plugin-cli when the image is built.
+#
+# Views other than the list view: the dashboard tour must cope with a dashboard without a job list.
+dashboard-view
+# Test results, which the assistant reads (failures, skipped, flaky).
+junit
+# Pipeline, with its stage and graph views: the job and build pages look different again.
+workflow-aggregator
+pipeline-stage-view
+pipeline-graph-view
+# Common on real controllers, and each adds its own links and columns to job and build pages.
+git
+timestamper
+ws-cleanup
+build-timeout
+ansicolor
+# Configuration as Code, to try the YAML in docs/usage.md (Setting up the assistant).
+configuration-as-code

@@ -83,7 +83,10 @@ never be set by the assistant, and re-runs never copy secret values.*
 2. Open **Concierge** from the Jenkins header. The welcome page, tours and learning paths work
    straight away, with no AI and nothing sent anywhere.
 3. Optionally, pin the jobs newcomers should start with: **Edit welcome and start here**.
-4. Optionally, turn on the assistant under **Manage Jenkins → System → Concierge assistant**.
+4. Optionally, turn on the assistant: store the provider's API key as a Secret text credential,
+   enable it under **Manage Jenkins → System → Concierge assistant**, and grant the
+   Concierge/Assistant permission to the people who should use it. Step by step, including
+   proxies and Configuration as Code: [Setting up the assistant](docs/usage.md#setting-up-the-assistant).
 
 To try it without touching your own controller:
 

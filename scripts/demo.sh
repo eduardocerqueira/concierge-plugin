@@ -8,6 +8,7 @@
 #   ./scripts/demo.sh --openai --model gpt-5       # assistant with OpenAI ($OPENAI_API_KEY)
 #   ./scripts/demo.sh --ollama qwen2.5:7b          # assistant with a local Ollama model
 #   ./scripts/demo.sh --anthropic --n-jobs 100     # plus 100 random jobs, for a busier instance
+#   ./scripts/demo.sh --mode turbo                 # plus Pipeline, Dashboard View, JUnit and more
 #   ./scripts/demo.sh --stop                       # tear it all down again
 #
 #   MVN_SETTINGS_XML=~/.m2/other-settings.xml ./scripts/demo.sh   # build with this Maven settings file
@@ -40,6 +41,8 @@ MODEL=""
 BASE_URL=""
 API_KEY=""
 EXTRA_JOBS=0
+MODE=minimal
+DASHBOARD_DEFAULT=0
 MAX_EXTRA_JOBS=2000
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -67,6 +70,12 @@ Options:
   --xai              Use xAI Grok. Reads \$XAI_API_KEY. Needs --model.
   --ollama MODEL     Use a local Ollama model, reached from the container at host.docker.internal.
   --model MODEL      Model id. Anthropic defaults to claude-sonnet-5-5.
+  --mode MODE        minimal (the default): only the plugins Concierge needs, as before.
+                     turbo: also Pipeline, Dashboard View, JUnit, Git and other common plugins
+                     (scripts/demo-plugins-turbo.txt), plus a Pipeline job with test results and
+                     an "overview" Dashboard View without a job list. Slower to build.
+  --dashboard-default
+                     With --mode turbo: make the "overview" Dashboard View the default view.
   --n-jobs N         Also create N jobs with random, realistic names (builds, tests, CVE scans,
                      provisioning, releases, automation), each with one build. 0 to ${MAX_EXTRA_JOBS}.
   --port PORT        Host port to publish Jenkins on. Default ${PORT}.
@@ -90,6 +99,8 @@ while [ $# -gt 0 ]; do
         --ollama)    PROVIDER=LOCAL; MODEL="${2:-}"; BASE_URL="http://host.docker.internal:11434/v1"; shift 2 ;;
         --model)     MODEL="${2:-}"; shift 2 ;;
         --n-jobs)    EXTRA_JOBS="${2:-}"; shift 2 ;;
+        --mode)      MODE="${2:-}"; shift 2 ;;
+        --dashboard-default) DASHBOARD_DEFAULT=1; shift ;;
         --port)      PORT="${2:-}"; shift 2 ;;
         --image)     IMAGE="${2:-}"; shift 2 ;;
         --no-build)  BUILD_PLUGIN=0; shift ;;
@@ -98,6 +109,13 @@ while [ $# -gt 0 ]; do
         *)           die "unknown option: $1 (try --help)" ;;
     esac
 done
+
+case "$MODE" in
+    minimal|turbo) ;;
+    *) die "--mode needs minimal or turbo, not '${MODE}'" ;;
+esac
+[ "$DASHBOARD_DEFAULT" = "0" ] || [ "$MODE" = "turbo" ] \
+    || die "--dashboard-default needs --mode turbo, which installs the Dashboard View plugin"
 
 [[ "$EXTRA_JOBS" =~ ^[0-9]+$ ]] && [ "$EXTRA_JOBS" -le "$MAX_EXTRA_JOBS" ] \
     || die "--n-jobs needs a whole number from 0 to ${MAX_EXTRA_JOBS}, not '${EXTRA_JOBS}'"
@@ -168,6 +186,12 @@ trap 'rm -rf "$CONTEXT"' EXIT
 cp "$HPI" "$CONTEXT/concierge.hpi"
 cp "${REPO_ROOT}/scripts/demo-plugins.txt" "$CONTEXT/plugins.txt"
 cp -R "${REPO_ROOT}/scripts/demo-init" "$CONTEXT/init.groovy.d"
+if [ "$MODE" = "turbo" ]; then
+    # The turbo seed script imports the extra plugins' classes, so it only goes in with them.
+    cat "${REPO_ROOT}/scripts/demo-plugins-turbo.txt" >> "$CONTEXT/plugins.txt"
+    cp "${REPO_ROOT}/scripts/demo-init-turbo/"*.groovy "$CONTEXT/init.groovy.d/"
+    info "turbo mode: $(grep -cvE '^\s*(#|$)' "${REPO_ROOT}/scripts/demo-plugins-turbo.txt") extra plugins and their dependencies"
+fi
 cp "${REPO_ROOT}/scripts/demo.Dockerfile" "$CONTEXT/Dockerfile"
 $RUNTIME build --build-arg "JENKINS_IMAGE=${IMAGE}" -t "$TAG" "$CONTEXT" >/dev/null
 info "built $TAG"
@@ -178,6 +202,7 @@ step "Starting Jenkins on $BASE"
 $RUNTIME rm -f "$CONTAINER" >/dev/null 2>&1 || true
 RUN_ARGS=(-d --name "$CONTAINER" -p "127.0.0.1:${PORT}:8080" --add-host "host.docker.internal:host-gateway"
           -e "CONCIERGE_DEMO_JOBS=${EXTRA_JOBS}")
+[ "$DASHBOARD_DEFAULT" = "0" ] || RUN_ARGS+=(-e "CONCIERGE_DEMO_DASHBOARD_DEFAULT=true")
 if [ -n "$PROVIDER" ]; then
     RUN_ARGS+=(-e "CONCIERGE_PROVIDER=${PROVIDER}" -e "CONCIERGE_MODEL=${MODEL}" -e "CONCIERGE_BASE_URL=${BASE_URL}")
     # The key goes in through the environment of a container bound to localhost. Fine for a demo on
@@ -221,8 +246,11 @@ else
 fi
 
 EXTRA_SUMMARY=""
+if [ "$MODE" = "turbo" ]; then
+    EXTRA_SUMMARY=$'\n'"  Turbo mode: Pipeline payments/checkout-pipeline (with test results) and the \"overview\""$'\n'"  Dashboard View$([ "$DASHBOARD_DEFAULT" = "1" ] && echo ", which is the default view" || echo ", at ${BASE}/view/overview/")."
+fi
 if [ "$EXTRA_JOBS" -gt 0 ]; then
-    EXTRA_SUMMARY=$'\n'"  Plus ${EXTRA_JOBS} generated jobs in build/, testing/, security/, provisioning/, release/ and"$'\n'"  automation/. Their first builds may still be running."
+    EXTRA_SUMMARY+=$'\n'"  Plus ${EXTRA_JOBS} generated jobs in build/, testing/, security/, provisioning/, release/ and"$'\n'"  automation/. Their first builds may still be running."
 fi
 
 cat <<EOF
