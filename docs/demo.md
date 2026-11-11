@@ -69,6 +69,9 @@ under your user menu → **Appearance**.
 | `--openai --model M` | Assistant with OpenAI. Reads `OPENAI_API_KEY`. |
 | `--xai --model M` | Assistant with xAI Grok. Reads `XAI_API_KEY`. |
 | `--ollama M` | Assistant with a local Ollama model. Start `ollama serve` first. |
+| `--mode minimal` | The default: only the plugins Concierge needs (`scripts/demo-plugins.txt`). |
+| `--mode turbo` | Also Pipeline, Dashboard View, JUnit, Git, Configuration as Code and other common plugins (`scripts/demo-plugins-turbo.txt`), a Pipeline job `payments/checkout-pipeline` with test results (one failure, so it is unstable), and an `overview` Dashboard View with no job list. Slower to build. |
+| `--dashboard-default` | With `--mode turbo`: make `overview` the default view, to check the dashboard tour on a dashboard without a job list. |
 | `--n-jobs N` | Also create N jobs (0 to 2000) with random names from everyday CI work, in `build/`, `testing/`, `security/`, `provisioning/`, `release/` and `automation/`, each with one build that mostly passes. For a busier instance: `./scripts/demo.sh --anthropic --n-jobs 100`. |
 | `--port P` | Use another port. Default 8080. |
 | `--no-build` | Reuse `target/concierge.hpi`. |
