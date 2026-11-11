@@ -106,12 +106,14 @@
     clear();
   }
 
-  function go(state, index) {
+  /** Moves to a step. direction is 1 for Next and -1 for Back, so a skipped step keeps going the same way. */
+  function go(state, index, direction) {
     if (index < 0 || index >= state.steps.length) {
       end();
       return;
     }
     state.index = index;
+    state.direction = direction === -1 ? -1 : 1;
     save(state);
     var step = state.steps[index];
     if (isHere(step)) {
@@ -169,6 +171,21 @@
 
     currentSelector = step.selector;
     target = findTarget(step.selector);
+    if (!target && step.optional) {
+      // This page has no such part, such as a dashboard without a job list: skip the step rather
+      // than point at nothing. Going back past the first step goes forward instead.
+      var next = state.index + (state.direction === -1 ? -1 : 1);
+      if (next < 0) {
+        next = state.index + 1;
+      }
+      currentSelector = null;
+      state.skipped = state.skipped || [];
+      if (state.skipped.indexOf(state.index) === -1) {
+        state.skipped.push(state.index);
+      }
+      go(state, next, next < state.index ? -1 : 1);
+      return;
+    }
     if (target) {
       target.classList.add("concierge-tour-target");
       target.scrollIntoView({ block: "center", behavior: "auto" });
@@ -182,8 +199,13 @@
     card.setAttribute("aria-label", step.title);
     card.setAttribute("aria-describedby", "concierge-tour-text");
 
+    // Steps skipped on this page are left out of the count, so it never jumps from 2 to 4.
+    var skipped = state.skipped || [];
+    var skippedBefore = skipped.filter(function (i) {
+      return i < state.index;
+    }).length;
     var counter = el("p", "concierge-tour-card__counter",
-      "Step " + (state.index + 1) + " of " + state.steps.length);
+      "Step " + (state.index + 1 - skippedBefore) + " of " + (state.steps.length - skipped.length));
     var title = el("h2", "concierge-tour-card__title", step.title);
     var text = el("p", "concierge-tour-card__text", step.text);
     text.id = "concierge-tour-text";
@@ -197,7 +219,7 @@
       var back = el("button", "jenkins-button", "Back");
       back.type = "button";
       back.addEventListener("click", function () {
-        go(state, state.index - 1);
+        go(state, state.index - 1, -1);
       });
       actions.appendChild(back);
     }
@@ -207,7 +229,7 @@
       if (last) {
         end();
       } else {
-        go(state, state.index + 1);
+        go(state, state.index + 1, 1);
       }
     });
     actions.appendChild(next);
@@ -237,7 +259,7 @@
         if (!body || !body.steps || body.steps.length === 0) {
           return;
         }
-        go({ id: body.id, steps: body.steps, index: 0 }, 0);
+        go({ id: body.id, steps: body.steps, index: 0 }, 0, 1);
       })
       .catch(function () {
         window.alert("The tour could not be loaded. Reload the page and try again.");

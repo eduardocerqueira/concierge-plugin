@@ -14,13 +14,16 @@ import java.util.Map;
  * CSS selector for the thing to point at, and what to say about it. {@code tour.js} walks through
  * them. When a selector matches nothing, because a plugin or a newer Jenkins changed the page, the
  * step is shown in the middle of the screen instead of being skipped, so a tour degrades rather
- * than breaks.
+ * than breaks. An optional step is skipped instead: one about a part of the page that is not
+ * always there, such as the job list, which a dashboard made with another kind of view (the
+ * Dashboard View plugin's, for one) may not have at all.
  *
  * <p>Jenkins has two layouts for the dashboard, job and build pages: the classic one, and the newer
  * one users can turn on under Experiments. A selector lists the newer layout's element first where
  * the two differ, since some classic classes (such as {@code .jenkins-app-bar}) are still present in
  * the newer layout but mean something else there. Never end a selector with a whole panel such as
- * {@code #side-panel}: pointing at the wrong thing is worse than pointing at nothing.
+ * {@code #side-panel}: pointing at the wrong thing is worse than pointing at nothing. Point at a
+ * block element rather than a table: the highlight is an outline, which tables do not draw well.
  *
  * <p>Every path comes from a job the current user can read, and all text is sent as plain text and
  * written with {@code textContent} (docs/security-design.md, rule 6).
@@ -69,13 +72,15 @@ final class TourCatalog {
                     Messages.TourStep_search_title(),
                     Messages.TourStep_search_text()));
             steps.add(step("", TASKS, Messages.TourStep_sidePanel_title(), Messages.TourStep_sidePanel_text()));
-            steps.add(step(
+            steps.add(optional(step(
                     "",
-                    "#projectstatus, #main-panel",
+                    ".app-project-status-table, #projectstatus",
                     Messages.TourStep_jobList_title(),
-                    Messages.TourStep_jobList_text()));
-            steps.add(step(
-                    "", "#buildQueue, #executors", Messages.TourStep_queue_title(), Messages.TourStep_queue_text()));
+                    Messages.TourStep_jobList_text())));
+            steps.add(
+                    optional(step("", "#buildQueue", Messages.TourStep_queue_title(), Messages.TourStep_queue_text())));
+            steps.add(optional(
+                    step("", "#executors", Messages.TourStep_executors_title(), Messages.TourStep_executors_text())));
             steps.add(step(
                     "concierge/",
                     ".concierge-paths, #main-panel",
@@ -121,6 +126,12 @@ final class TourCatalog {
         tour.put("id", id);
         tour.put("steps", steps);
         return tour;
+    }
+
+    /** Marks a step to be skipped, rather than shown in the middle, when its page has no such part. */
+    private static Map<String, Object> optional(Map<String, Object> step) {
+        step.put("optional", true);
+        return step;
     }
 
     private static Map<String, Object> step(String path, String selector, String title, String text) {
